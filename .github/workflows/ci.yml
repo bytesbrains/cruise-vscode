@@ -1,0 +1,45 @@
+# Types, tests and the extension bundle, on every pull request.
+#
+# Deliberately no publish step and no Marketplace / Open VSX token. The
+# extension ships when a person runs `npm run publish:*` locally
+# (CONTRIBUTING.md), so the decision and the person are never separated.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Types
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      - name: Bundle
+        run: npm run build
+
+      - name: Secrets scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

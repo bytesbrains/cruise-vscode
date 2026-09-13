@@ -1,0 +1,18 @@
+BytesBrains Cruise for VS Code
+© 2026 BYTESBRAINS PTE. LTD. All rights reserved.
+
+This extension is provided for use with the BytesBrains Cruise service.
+
+You may install and use it on any machine you control, and you may obtain it
+from the Visual Studio Marketplace, from Open VSX, or as the VSIX file either
+of them serves.
+
+You may not modify it, redistribute a modified copy of it, or present a copy
+of it as your own. Nothing here grants any right to the Cruise service itself,
+whose use is governed by the terms of service of BytesBrains Pte. Ltd.
+
+THE EXTENSION IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL
+BYTESBRAINS PTE. LTD. BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY
+ARISING FROM OR IN CONNECTION WITH THE EXTENSION OR ITS USE.

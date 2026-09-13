@@ -1,0 +1,18 @@
+# What does not go into the VSIX. `dist/extension.js` is the whole extension —
+# esbuild bundles it with no runtime dependencies at all, which is why
+# `vsce package --no-dependencies` is honest here rather than a shortcut.
+src/**
+test/**
+tsconfig.json
+vitest.config.ts
+.vscodeignore
+.githooks/**
+.github/**
+.gitleaks.toml
+.gitignore
+CODEOWNERS
+CONTRIBUTING.md
+SECURITY.md
+node_modules/**
+**/*.map
+**/*.vsix

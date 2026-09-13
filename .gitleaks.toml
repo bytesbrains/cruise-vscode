@@ -1,0 +1,28 @@
+# What the hooks scan for, beyond gitleaks' own rules.
+#
+# `useDefault` keeps every provider format gitleaks already knows. Dropping it
+# to replace the set would be the classic own-goal: a config written to catch
+# one more secret that quietly stops catching the other four hundred.
+title = "cruise-vscode"
+
+[extend]
+useDefault = true
+
+# Every credential Cruise issues is one shape — `cru_<live|test|demo|svc>_` and
+# then exactly 40 characters of base62. The prefix alone is deliberately below
+# this threshold: `cru_live_xaBK04PQ` is the log-safe half and appears in docs.
+[[rules]]
+id = "cruise-key"
+description = "A Cruise credential — cru_live_, cru_test_, cru_demo_ or cru_svc_ and its 40-character secret"
+regex = '''cru_(live|test|demo|svc)_[A-Za-z0-9]{40}'''
+keywords = ["cru_live_", "cru_test_", "cru_demo_", "cru_svc_"]
+
+# Placeholder strings that are not keys. Enumerated rather than waved through by
+# path: test/ is where a real credential is most plausibly pasted "just to
+# reproduce it", and a directory allowlist is a door.
+[[rules.allowlists]]
+regexTarget = "match"
+regexes = [
+  '''cru_(live|test)_A{8}B{32}''',
+  '''cru_(live|test)_realkeyshapedvalue0{22}''',
+]

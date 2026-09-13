@@ -1,0 +1,23 @@
+#!/bin/sh
+# Full-history scan on push. Pre-commit only sees the staged diff.
+set -e
+
+if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+  echo "pre-push: this is a shallow clone, so a full-history scan is not possible."
+  echo ""
+  echo "  git fetch --unshallow"
+  echo ""
+  echo "  A partial scan reporting 'no leaks' is worse than no scan."
+  exit 1
+fi
+
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks detect --source . --redact --no-banner
+else
+  echo "pre-push: gitleaks is not installed, so history was NOT scanned."
+  echo ""
+  echo "  brew install gitleaks"
+  echo ""
+  echo "  To push anyway, deliberately: git push --no-verify"
+  exit 1
+fi

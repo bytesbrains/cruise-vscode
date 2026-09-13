@@ -1,0 +1,18 @@
+node_modules/
+dist/
+
+# Secrets never enter this repo. A Cruise key in SecretStorage belongs on the
+# machine that holds it — never in git, never in settings.json, never in a VSIX.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+
+*.log
+.DS_Store
+
+# Packaged extensions are build artifacts. Publish from a clean tree; do not
+# commit the .vsix (it is what the Marketplace and Open VSX already serve).
+*.vsix

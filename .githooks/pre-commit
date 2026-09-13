@@ -1,0 +1,14 @@
+#!/bin/sh
+# Fast, local, offline. Fails closed: a missing scanner is not a warning.
+set -e
+
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --redact --no-banner
+else
+  echo "pre-commit: gitleaks is not installed, so nothing scanned this commit."
+  echo ""
+  echo "  brew install gitleaks"
+  echo ""
+  echo "  To commit anyway, deliberately: git commit --no-verify"
+  exit 1
+fi
