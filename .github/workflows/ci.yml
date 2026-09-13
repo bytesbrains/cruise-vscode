@@ -47,7 +47,7 @@ jobs:
         run: npx vsce package --no-dependencies
 
       - name: Upload VSIX
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bytesbrains-cruise-${{ github.sha }}
           path: "*.vsix"
