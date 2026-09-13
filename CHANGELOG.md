@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3 — 2026-09-13
+
+Republish so the Marketplace carries a complete asset set for this version — the
+0.1.2 upload timed out mid-flight and left the listing without a usable icon in
+the editor. Same bits otherwise.
+
 ## 0.1.2 — 2026-09-13
 
 Source of truth moved to the public repository
