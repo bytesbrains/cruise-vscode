@@ -6,7 +6,8 @@ Thanks for caring about the extension. This repo is the source of truth for
 ## Ground rules
 
 - **Never commit a Cruise key, a Marketplace PAT, or an Open VSX token.** Keys live in the
-  editor's `SecretStorage` or in your shell environment for publish commands — nowhere in git.
+  editor's `SecretStorage`. Publish tokens live only as GitHub Actions secrets
+  (`VSCE_PAT`, `OVSX_PAT`) or in a maintainer's local environment for a manual retry.
 - **No telemetry, no second host.** The extension talks only to the configured `cruise.endpoint`.
 - **Do not commit `dist/`, `*.vsix`, or `node_modules/`.** They are build artifacts.
 - Prefer a pull request into `dev` (or `main` for a hotfix). Both branches are protected.
@@ -32,8 +33,8 @@ npm run build
 npm run secrets:scan
 ```
 
-CI runs the same on every pull request and on pushes to `main` / `dev`. The required status
-check is named `check`.
+CI runs the same on every pull request and on pushes to `main` / `dev`, and also packages a
+VSIX artifact. The required status check is named `check`.
 
 ## Trying a local build
 
@@ -44,23 +45,34 @@ npm run package
 Install the VSIX with **Extensions: Install from VSIX…**, point `cruise.endpoint` at
 `https://cruise-demo.bytesbrains.net/v1`, and sign in with a `cru_demo_` key.
 
-## Publishing (maintainers)
+## Releasing (maintainers)
 
-Publishing is a person on a machine, not a merge. Bump `version` in `package.json`, update
-`CHANGELOG.md`, then:
+A release is a **tag**, not a merge. The `release` workflow publishes to the Marketplace and
+Open VSX, then attaches the VSIX to a GitHub Release.
+
+1. On `main`, bump `version` in `package.json` and update `CHANGELOG.md`.
+2. Merge that PR (wait for `check`).
+3. Tag and push:
 
 ```sh
-# Visual Studio Marketplace — needs VSCE_PAT in the environment
-npm run publish:marketplace
-
-# Open VSX — needs OVSX_PAT in the environment
-npm run publish:openvsx
+git tag v0.x.y main
+git push origin v0.x.y
 ```
 
-Tag the release as `v0.x.y` after both registries accept it. Do not put either token in the
-repo or in Actions secrets unless the workflow that would use them is reviewed for the same
-reason deploys are not automatic: a publish that fires on a merge separates the artifact from
-the person who decided it.
+The tag **must** match `package.json` (`v0.1.4` ↔ `"0.1.4"`). The workflow fails closed if
+`VSCE_PAT` or `OVSX_PAT` is missing.
+
+To retry a failed publish without retagging: **Actions → release → Run workflow** and pass the
+existing tag.
+
+Local publish (escape hatch only):
+
+```sh
+export VSCE_PAT=…   # or map from AZURE_MARKETPLACE_PAT
+export OVSX_PAT=…   # or map from OVSX_BB_CRUISE_PUBLISHING_TOKEN
+npm run publish:marketplace
+npm run publish:openvsx
+```
 
 ## Pull requests
 

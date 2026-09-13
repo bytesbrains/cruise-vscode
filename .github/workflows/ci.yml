@@ -1,8 +1,7 @@
-# Types, tests and the extension bundle, on every pull request.
+# Types, tests, bundle and a packaged VSIX on every PR and on main/dev.
 #
-# Deliberately no publish step and no Marketplace / Open VSX token. The
-# extension ships when a person runs `npm run publish:*` locally
-# (CONTRIBUTING.md), so the decision and the person are never separated.
+# Publish is *not* here — that is `.github/workflows/release.yml`, on a `v*`
+# tag only, so the decision to ship stays the person who cuts the tag.
 name: ci
 
 on:
@@ -15,6 +14,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -22,6 +24,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -38,6 +42,17 @@ jobs:
 
       - name: Bundle
         run: npm run build
+
+      - name: Package VSIX
+        run: npx vsce package --no-dependencies
+
+      - name: Upload VSIX
+        uses: actions/upload-artifact@v4
+        with:
+          name: bytesbrains-cruise-${{ github.sha }}
+          path: "*.vsix"
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Secrets scan
         uses: gitleaks/gitleaks-action@v2
