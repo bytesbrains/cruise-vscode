@@ -5,6 +5,7 @@ src/**
 test/**
 tsconfig.json
 vitest.config.ts
+vitest.config.mts
 .vscodeignore
 .githooks/**
 .github/**
