@@ -102,6 +102,9 @@ jobs:
       - name: Tests
         run: npm test
 
+      - name: Bundle
+        run: npm run build
+
       - name: Package VSIX
         run: npx vsce package --no-dependencies -o "bytesbrains-cruise-${{ steps.tag.outputs.version }}.vsix"
 
