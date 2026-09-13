@@ -20,9 +20,11 @@ cd cruise-vscode
 npm ci
 ```
 
-`npm ci` runs `prepare`, which points `core.hooksPath` at `.githooks/`. Those hooks require
-[gitleaks](https://github.com/gitleaks/gitleaks) (`brew install gitleaks`) and fail closed if it
-is missing — on purpose.
+`npm ci` runs `prepare`, which points `core.hooksPath` at `.githooks/`. **pre-commit**
+runs `gitleaks protect` on the staged diff; **pre-push** runs `gitleaks detect` over full
+history — both with `.gitleaks.toml` (Cruise key shapes included). Those hooks require
+[gitleaks](https://github.com/gitleaks/gitleaks) (`brew install gitleaks`) and fail closed if
+it is missing — on purpose.
 
 ## Checks
 

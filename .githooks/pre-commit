@@ -1,10 +1,14 @@
 #!/bin/sh
 # Fast, local, offline. Fails closed: a missing scanner is not a warning.
+#
+# Staged changes only — full history is pre-push. Uses `.gitleaks.toml` so the
+# Cruise-key rule runs, not only gitleaks' defaults.
 set -e
 
-if command -v gitleaks >/dev/null 2>&1; then
-  gitleaks protect --staged --redact --no-banner
-else
+ROOT="$(git rev-parse --show-toplevel)"
+CONFIG="$ROOT/.gitleaks.toml"
+
+if ! command -v gitleaks >/dev/null 2>&1; then
   echo "pre-commit: gitleaks is not installed, so nothing scanned this commit."
   echo ""
   echo "  brew install gitleaks"
@@ -12,3 +16,10 @@ else
   echo "  To commit anyway, deliberately: git commit --no-verify"
   exit 1
 fi
+
+if [ ! -f "$CONFIG" ]; then
+  echo "pre-commit: missing $CONFIG — refusing to commit without a scan config."
+  exit 1
+fi
+
+gitleaks protect --staged --redact --no-banner --config "$CONFIG"
