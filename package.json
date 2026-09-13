@@ -2,7 +2,7 @@
   "name": "bytesbrains-cruise",
   "displayName": "BytesBrains Cruise",
   "description": "Every model your Cruise key can reach, in Copilot Chat and agent mode. Budgets, per-project keys and one cost ledger stay where they are.",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "publisher": "bytesbrains",
   "private": true,
   "license": "SEE LICENSE IN LICENSE.txt",

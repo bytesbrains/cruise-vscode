@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.4 — 2026-09-13
+
+README wordmark and clearer sections; tag-triggered release workflow for Marketplace
+and Open VSX; Vitest 4.1.11 clears the Dependabot path-traversal findings. No
+behaviour change in the extension itself.
+
 ## 0.1.3 — 2026-09-13
 
 Republish so the Marketplace carries a complete asset set for this version — the
