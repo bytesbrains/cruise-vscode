@@ -91,6 +91,10 @@
     "esbuild": "^0.28.2",
     "ovsx": "^1.1.1",
     "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
+    "vitest": "4.1.11"
+  },
+  "overrides": {
+    "vitest": "4.1.11",
+    "@vitest/mocker": "4.1.11"
   }
 }
