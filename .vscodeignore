@@ -17,3 +17,11 @@ SECURITY.md
 node_modules/**
 **/*.map
 **/*.vsix
+
+# vsce reads this file, not .gitignore — a local .env would otherwise ship in
+# the VSIX to every install. Mirror .gitignore's secret patterns here.
+.env
+.env.*
+**/*.pem
+**/*.key
+**/credentials.json

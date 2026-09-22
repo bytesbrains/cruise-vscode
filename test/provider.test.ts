@@ -100,7 +100,8 @@ describe("listing models", () => {
     expect(await p.provideLanguageModelChatInformation({ silent: true }, new vscode.CancellationTokenSource().token)).toEqual([]);
     expect(state.shown).toEqual([]);
     expect(await p.provideLanguageModelChatInformation({ silent: false }, new vscode.CancellationTokenSource().token)).toEqual([]);
-    expect(state.shown).toMatchObject([{ level: "error", message: expect.stringContaining("Manage API key") }]);
+    // A rejected key the user asked about gets the diagnosis dialog, not a toast.
+    expect(state.shown).toMatchObject([{ level: "error", modal: true, detail: expect.stringContaining("rejected the key itself") }]);
   });
 });
 
@@ -176,6 +177,47 @@ describe("the response that comes back", () => {
     const error: unknown = await responseOf(p, [userTurn(new vscode.LanguageModelTextPart("hi"))]).run.catch((e: unknown) => e);
     expect(error).toMatchObject({ code: "NoPermissions", message: expect.stringContaining("Manage API key") });
     expect((error as Error).cause).toBeInstanceOf(GatewayError);
+  });
+
+  it("says in the chat panel when the key was sent to the wrong deployment (#16)", async () => {
+    stub(Response.json({ error: { code: null, message: "Incorrect API key provided." } }, { status: 401 }));
+    state.settings.set("cruise.endpoint", "https://cruise-demo.bytesbrains.net/v1");
+    const { provider: p, secrets } = provider();
+    await secrets.store("cruise.apiKey", "cru_live_abc");
+    const error: unknown = await responseOf(p, [userTurn(new vscode.LanguageModelTextPart("hi"))]).run.catch((e: unknown) => e);
+    expect(error).toMatchObject({ code: "NoPermissions", message: expect.stringContaining("sent to the demo gateway") });
+    expect((error as Error).message).toContain("Change endpoint");
+    // A modal over the chat panel on every retry would be worse than the bug.
+    expect(state.shown).toEqual([]);
+  });
+
+  it("diagnoses against the endpoint the request went to, not the one set since (review of #17)", async () => {
+    let answer!: (response: Response) => void;
+    globalThis.fetch = vi.fn(() => new Promise<Response>((resolve) => (answer = resolve))) as unknown as typeof fetch;
+    state.settings.set("cruise.endpoint", "https://cruise-demo.bytesbrains.net/v1");
+    const { provider: p, secrets } = provider();
+    await secrets.store("cruise.apiKey", "cru_live_abc");
+    const { run } = responseOf(p, [userTurn(new vscode.LanguageModelTextPart("hi"))]);
+    await vi.waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
+    // The user moves to production while the demo is still answering.
+    state.settings.set("cruise.endpoint", undefined);
+    answer(Response.json({ error: { code: null, message: "Incorrect API key provided." } }, { status: 401 }));
+    const error: unknown = await run.catch((e: unknown) => e);
+    expect((error as Error).message).toContain("sent to the demo gateway");
+  });
+
+  it("names the endpoint that could not be reached, not the one set since", async () => {
+    let fail!: (error: Error) => void;
+    globalThis.fetch = vi.fn(() => new Promise<Response>((_, reject) => (fail = reject))) as unknown as typeof fetch;
+    state.settings.set("cruise.endpoint", "https://proxy.example.com/v1");
+    const { provider: p, secrets } = provider();
+    await secrets.store("cruise.apiKey", "cru_live_abc");
+    const listing = p.provideLanguageModelChatInformation({ silent: true }, new vscode.CancellationTokenSource().token);
+    await vi.waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
+    state.settings.set("cruise.endpoint", undefined);
+    fail(new TypeError("fetch failed"));
+    await listing;
+    expect(state.logged.at(-1)?.message).toContain("Could not reach Cruise at https://proxy.example.com/v1");
   });
 
   it("throws a spending refusal as a plain error whose cause still carries the code", async () => {

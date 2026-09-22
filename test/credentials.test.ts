@@ -73,4 +73,25 @@ describe("promptForKey", () => {
     expect(secrets.peek(ENTRY)).toBe("sk-not-a-cruise-key");
     expect(state.shown).toMatchObject([{ level: "warning", message: expect.stringContaining("cru_") }]);
   });
+
+  it("sends a demo key to the demo, and a live key back to production (#16)", async () => {
+    const secrets = new MemorySecrets();
+    state.inputBox = "cru_demo_abc";
+    await promptForKey(secrets);
+    expect(endpoint()).toBe("https://cruise-demo.bytesbrains.net/v1");
+    state.inputBox = "cru_live_abc";
+    await promptForKey(secrets);
+    expect(endpoint()).toBe("https://cruise.bytesbrains.net/v1");
+    expect(state.shown).toMatchObject([
+      { level: "info", message: expect.stringContaining("Switched the endpoint to the demo") },
+      { level: "info", message: expect.stringContaining("Switched the endpoint to production") },
+    ]);
+  });
+
+  it("does not move the endpoint for a key that already matches it", async () => {
+    const secrets = new MemorySecrets();
+    state.inputBox = "cru_live_abc";
+    await promptForKey(secrets);
+    expect(state.updates).toEqual([]);
+  });
 });

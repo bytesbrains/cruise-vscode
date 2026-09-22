@@ -166,10 +166,16 @@ export const state = {
   updates: [] as { key: string; value: unknown; target: ConfigurationTarget | undefined }[],
   /** What the next `showInputBox` resolves to. `undefined` is the user cancelling. */
   inputBox: undefined as string | undefined,
-  /** The `id` of the item the next `showQuickPick` picks. `undefined` cancels. */
-  quickPick: undefined as string | undefined,
-  /** Every notification shown, in order. */
-  shown: [] as { level: "info" | "warning" | "error"; message: string }[],
+  /** The `id` of the item the next `showQuickPick` picks. `undefined` cancels. A list answers successive picks in order. */
+  quickPick: undefined as string | string[] | undefined,
+  /** Every notification shown, in order. A modal carries its detail and buttons. */
+  shown: [] as { level: "info" | "warning" | "error"; message: string; modal?: boolean; detail?: string; actions?: string[] }[],
+  /** The button the next error dialog resolves to. `undefined` dismisses it. */
+  dialogChoice: undefined as string | undefined,
+  /** Every `executeCommand`, by id. */
+  executed: [] as string[],
+  /** How many times the output channel was revealed. */
+  logShown: 0,
   /** Every line logged to the output channel. */
   logged: [] as { level: string; message: string }[],
   /** Providers registered, by vendor. */
@@ -184,6 +190,9 @@ export const state = {
     this.inputBox = undefined;
     this.quickPick = undefined;
     this.shown = [];
+    this.dialogChoice = undefined;
+    this.executed = [];
+    this.logShown = 0;
     this.logged = [];
     this.providers.clear();
     this.commands.clear();
@@ -204,6 +213,9 @@ export const workspace = {
     update: (key: string, value: unknown, target?: ConfigurationTarget): Promise<void> => {
       state.settings.set(key, value);
       state.updates.push({ key, value, target });
+      // As the editor does: a write is announced, and the extension's own
+      // listener refreshes the model list from it.
+      state.changeConfiguration(key);
       return Promise.resolve();
     },
   }),
@@ -215,8 +227,10 @@ export const workspace = {
 
 export const window = {
   showInputBox: (): Promise<string | undefined> => Promise.resolve(state.inputBox),
-  showQuickPick: <T extends { id: string }>(items: T[]): Promise<T | undefined> =>
-    Promise.resolve(items.find((item) => item.id === state.quickPick)),
+  showQuickPick: <T extends { id: string }>(items: T[]): Promise<T | undefined> => {
+    const id = Array.isArray(state.quickPick) ? state.quickPick.shift() : state.quickPick;
+    return Promise.resolve(items.find((item) => item.id === id));
+  },
   showInformationMessage: (message: string): Promise<undefined> => {
     state.shown.push({ level: "info", message });
     return Promise.resolve(undefined);
@@ -225,15 +239,21 @@ export const window = {
     state.shown.push({ level: "warning", message });
     return Promise.resolve(undefined);
   },
-  showErrorMessage: (message: string): Promise<undefined> => {
-    state.shown.push({ level: "error", message });
-    return Promise.resolve(undefined);
+  showErrorMessage: (message: string, ...rest: unknown[]): Promise<string | undefined> => {
+    const options = typeof rest[0] === "object" && rest[0] !== null ? (rest.shift() as { modal?: boolean; detail?: string }) : undefined;
+    const actions = rest as string[];
+    if (options === undefined && actions.length === 0) {
+      state.shown.push({ level: "error", message });
+      return Promise.resolve(undefined);
+    }
+    state.shown.push({ level: "error", message, modal: options?.modal ?? false, detail: options?.detail ?? "", actions });
+    return Promise.resolve(actions.includes(state.dialogChoice ?? "") ? state.dialogChoice : undefined);
   },
-  createOutputChannel: (): Record<string, (message: string) => void> => {
-    const line = (level: string) => (message: string) => {
-      state.logged.push({ level, message });
+  createOutputChannel: (): Record<string, (message?: string) => void> => {
+    const line = (level: string) => (message?: string) => {
+      state.logged.push({ level, message: message ?? "" });
     };
-    return { info: line("info"), warn: line("warn"), error: line("error"), debug: line("debug"), trace: line("trace"), appendLine: line("append"), dispose: () => undefined };
+    return { info: line("info"), warn: line("warn"), error: line("error"), debug: line("debug"), trace: line("trace"), appendLine: line("append"), show: () => { state.logShown++; }, dispose: () => undefined };
   },
 };
 
@@ -248,5 +268,9 @@ export const commands = {
   registerCommand: (id: string, handler: (...args: unknown[]) => unknown): Disposable => {
     state.commands.set(id, handler);
     return { dispose: () => state.commands.delete(id) };
+  },
+  executeCommand: (id: string): Promise<undefined> => {
+    state.executed.push(id);
+    return Promise.resolve(undefined);
   },
 };

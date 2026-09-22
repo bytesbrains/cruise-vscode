@@ -21,6 +21,7 @@
  */
 
 import * as vscode from "vscode";
+import { DEMO_ENDPOINT, PRODUCTION_ENDPOINT, realignment } from "./pairing.ts";
 
 /**
  * The one entry this extension writes to the keychain. This is the entry's
@@ -33,14 +34,62 @@ import * as vscode from "vscode";
 const KEYCHAIN_ENTRY = "cruise.apiKey";
 
 const ENDPOINT_SETTING = "cruise.endpoint";
-const DEFAULT_ENDPOINT = "https://cruise.bytesbrains.net/v1";
 
-export const DEMO_ENDPOINT = "https://cruise-demo.bytesbrains.net/v1";
+export { DEMO_ENDPOINT };
 
 /** The configured data plane, or production. */
 export function endpoint(): string {
   const configured = vscode.workspace.getConfiguration().get<string>(ENDPOINT_SETTING);
-  return configured === undefined || configured.trim() === "" ? DEFAULT_ENDPOINT : configured.trim();
+  return configured === undefined || configured.trim() === "" ? PRODUCTION_ENDPOINT : configured.trim();
+}
+
+/**
+ * Point the extension at a data plane. `undefined` removes the setting rather
+ * than writing production's URL into it, so a user on the default keeps
+ * following the default.
+ *
+ * Global rather than workspace: the setting is `machine`-scoped (see above),
+ * and the endpoint is a property of the person, not of the folder open.
+ */
+export async function setEndpoint(value: string | undefined): Promise<void> {
+  await vscode.workspace.getConfiguration().update(ENDPOINT_SETTING, value, vscode.ConfigurationTarget.Global);
+}
+
+/**
+ * Resolves once no key-and-endpoint change is half applied.
+ *
+ * Storing a key and moving the endpoint to its deployment are two writes, and
+ * each is announced — the keychain's `onDidChange`, the configuration's —
+ * before the other has happened. The listeners in `extension.ts` refresh the
+ * model list on either, and an enumeration that reads between them sends the
+ * new key to the old endpoint, or the old key to the new one: the mismatch
+ * #16 is about, produced by its own fix (review of #17). Reordering the writes
+ * only swaps which half is stale, so the reader waits instead: `provider.ts`
+ * awaits this before it reads either.
+ */
+let pending: Promise<void> = Promise.resolve();
+
+export async function settled(): Promise<void> {
+  // A change that began while this was waiting is waited for too.
+  for (let seen: Promise<void> | undefined; seen !== pending; ) {
+    seen = pending;
+    await seen;
+  }
+}
+
+/** Run `change` with readers held at `settled` until it is done. */
+async function pairing<T>(change: () => Promise<T>): Promise<T> {
+  let release!: () => void;
+  // Set before `change` starts: the keychain announces a store synchronously,
+  // inside the call, and a listener must already find the gate shut.
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  const before = pending;
+  pending = before.then(() => gate);
+  try {
+    return await change();
+  } finally {
+    release();
+  }
 }
 
 /** The stored key, or `undefined` when the user has not signed in. */
@@ -63,6 +112,11 @@ export async function forgetKey(secrets: vscode.SecretStorage): Promise<void> {
  * `password: true` so it is not shown, not in the input box's history, and not
  * in a screen recording of somebody demonstrating the extension.
  *
+ * `options.endpoint` is where the key is meant to go ("Try the demo"). It is
+ * written only once a key has been entered, together with the key: written
+ * before the prompt, a cancel left the old key pointed at it — #16, one Escape
+ * away.
+ *
  * The shape is checked only as far as the prefix. The exact key format lives in
  * one place — `src/keys.ts`, from which the OpenAPI document, the gitleaks rule
  * and `docs/keys.md` all derive — and a second copy pinned into a separately
@@ -72,10 +126,13 @@ export async function forgetKey(secrets: vscode.SecretStorage): Promise<void> {
  * gateway is the authority on whether a key works, and the prefix check is a
  * typo catcher, not a gate — it warns and still stores.
  */
-export async function promptForKey(secrets: vscode.SecretStorage): Promise<string | undefined> {
+export async function promptForKey(
+  secrets: vscode.SecretStorage,
+  options: { endpoint?: string } = {},
+): Promise<string | undefined> {
   const entered = await vscode.window.showInputBox({
     title: "BytesBrains Cruise",
-    prompt: `Paste a Cruise API key. It is stored in the editor's secret storage, never in settings. Endpoint: ${endpoint()}`,
+    prompt: `Paste a Cruise API key. It is stored in the editor's secret storage, never in settings. Endpoint: ${options.endpoint ?? endpoint()}`,
     placeHolder: "cru_live_…",
     password: true,
     ignoreFocusOut: true,
@@ -93,6 +150,29 @@ export async function promptForKey(secrets: vscode.SecretStorage): Promise<strin
     );
   }
 
-  await storeKey(secrets, key);
+  await pairing(async () => {
+    if (options.endpoint !== undefined) await setEndpoint(options.endpoint);
+    await storeKey(secrets, key);
+    await realign(key);
+  });
   return key;
+}
+
+/**
+ * Send the key to the deployment it belongs to. #16: "Try the demo" wrote the
+ * demo endpoint and nothing ever wrote it back, so every live key after it was
+ * "Incorrect API key" — a correct key, sent to a gateway whose key table has
+ * never held it. The prefix names the deployment, so there is nothing to ask:
+ * move the endpoint and say so. A custom endpoint is left alone
+ * (`realignment`), because a proxy was chosen on purpose.
+ */
+async function realign(key: string): Promise<void> {
+  const target = realignment(key, endpoint());
+  if (target === null) return;
+  await setEndpoint(target === "production" ? undefined : DEMO_ENDPOINT);
+  vscode.window.showInformationMessage(
+    target === "production"
+      ? `Switched the endpoint to production (${PRODUCTION_ENDPOINT}) — a production key is not accepted by the demo gateway.`
+      : `Switched the endpoint to the demo (${DEMO_ENDPOINT}) — a cru_demo_ key is not accepted by production.`,
+  );
 }

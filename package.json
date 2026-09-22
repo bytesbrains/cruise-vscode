@@ -2,7 +2,7 @@
   "name": "bytesbrains-cruise",
   "displayName": "BytesBrains Cruise",
   "description": "Every model your Cruise key can reach, in Copilot Chat and agent mode. Budgets, per-project keys and one cost ledger stay where they are.",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publisher": "bytesbrains",
   "private": true,
   "license": "SEE LICENSE IN LICENSE.txt",
@@ -51,6 +51,11 @@
         "command": "cruise.manageKey",
         "title": "Manage API key",
         "category": "Cruise"
+      },
+      {
+        "command": "cruise.changeEndpoint",
+        "title": "Change endpoint",
+        "category": "Cruise"
       }
     ],
     "configuration": {
@@ -59,14 +64,14 @@
         "cruise.endpoint": {
           "type": "string",
           "default": "https://cruise.bytesbrains.net/v1",
-          "markdownDescription": "The Cruise data plane this provider calls. Point it at `https://cruise-demo.bytesbrains.net/v1` with a `cru_demo_` key to try the extension without anyone issuing a live one: production's model ids, fabricated answers, zero prices. A user setting only: the stored key is sent to whatever this names, so a workspace cannot set it.",
+          "markdownDescription": "The Cruise data plane this provider calls. Point it at `https://cruise-demo.bytesbrains.net/v1` with a `cru_demo_` key to try the extension without anyone issuing a live one: production's model ids, fabricated answers, zero prices. Change it with **Cruise: Change endpoint** — production, the demo, or a proxy / custom URL. A user setting only: the stored key is sent to whatever this names, so a workspace cannot set it.",
           "scope": "machine"
         },
         "cruise.maxOutputTokens": {
           "type": "integer",
           "default": 16384,
           "minimum": 1,
-          "markdownDescription": "The `max_tokens` every request carries, clamped to the model's own measured ceiling. Cruise reserves an upper bound on what a request could cost **before** sending it, and that bound is built from this number \u2014 so asking for a model's full ceiling can have a two-sentence answer refused for want of credit it was never going to spend. A billed tenant that sends no `max_tokens` at all is refused `request_unbounded`, so this is not optional, only adjustable.",
+          "markdownDescription": "The `max_tokens` every request carries, clamped to the model's own measured ceiling. Cruise reserves an upper bound on what a request could cost **before** sending it, and that bound is built from this number — so asking for a model's full ceiling can have a two-sentence answer refused for want of credit it was never going to spend. A billed tenant that sends no `max_tokens` at all is refused `request_unbounded`, so this is not optional, only adjustable.",
           "scope": "machine-overridable"
         }
       }
@@ -82,7 +87,7 @@
     "package": "npm run build && vsce package --no-dependencies",
     "publish:marketplace": "npm run build && vsce publish --no-dependencies",
     "publish:openvsx": "npm run build && ovsx publish --no-dependencies",
-    "secrets:scan": "gitleaks detect --source . --redact --no-banner"
+    "secrets:scan": "gitleaks detect --source . --redact --no-banner --config .gitleaks.toml"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
