@@ -82,6 +82,7 @@
     "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node22 --minify",
     "watch": "npm run build -- --sourcemap --no-minify --watch",
     "typecheck": "tsc --noEmit",
+    "capture": "node scripts/capture/capture.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "package": "npm run build && vsce package --no-dependencies",
@@ -92,9 +93,11 @@
   "devDependencies": {
     "@types/node": "^22.20.4",
     "@types/vscode": "1.106.0",
+    "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^4.0.0",
     "esbuild": "^0.28.2",
     "ovsx": "^1.1.1",
+    "playwright-core": "^1.63.0",
     "typescript": "^5.9.2",
     "vitest": "4.1.11"
   },

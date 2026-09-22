@@ -47,6 +47,30 @@ npm run package
 Install the VSIX with **Extensions: Install from VSIX…**, point `cruise.endpoint` at
 `https://cruise-demo.bytesbrains.net/v1`, and sign in with a `cru_demo_` key.
 
+## The README's pictures
+
+Every image in the README is generated, never recorded by hand, so it can be regenerated
+whenever the UI changes:
+
+```sh
+npx playwright-core install chromium   # once, for the diagram
+npm run capture                        # everything, into media/readme/
+npm run capture -- rejected-key        # or one: walkthrough, change-endpoint, rejected-key, pairing
+```
+
+`scripts/capture/` drives a real VS Code, pinned in `editor.mjs` and downloaded once into
+`.vscode-test/`, with a throwaway profile, a fixed window size, theme and pace, and the
+extension built from `src/`. That build carries one change: `fetch` sends the two Cruise hosts
+and `proxy.example.com` to `mock-gateway.mjs` on 127.0.0.1, and refuses any other URL. The
+mock keeps production's and the demo's key tables apart, so the rejected-key dialog is the
+extension's real answer to a real 401. It needs **no key, no account and no network** apart
+from the one-time downloads. The editor's own traffic goes to a closed proxy port. `ffmpeg`
+must be on `PATH` (`brew install ffmpeg`). The diagram is `diagram.html`, rendered to PNG,
+because the Marketplace rejects SVG in a README.
+
+The pictures stay out of the VSIX (`.vscodeignore`). `vsce` rewrites the README's relative
+image links to this repository on GitHub, and that is where the Marketplace loads them from.
+
 ## Releasing (maintainers)
 
 A release is a **tag**, not a merge. The `release` workflow publishes to the Marketplace and

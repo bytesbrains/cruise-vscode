@@ -1,0 +1,79 @@
+<!doctype html>
+<!--
+  Which key goes where — rendered to media/readme/pairing.png by
+  `npm run capture -- pairing`. The facts are src/pairing.ts's: separate key
+  tables per deployment, cru_svc_ on neither's /v1, a custom URL untouched.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Key and endpoint pairing</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --card: #161b22;
+    --line: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --live: #3fb950;
+    --demo: #d29922;
+    --svc: #f85149;
+    --proxy: #58a6ff;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--bg); font: 15px/1.4 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: var(--text); }
+  #diagram { width: 1040px; padding: 36px 40px 32px; background: var(--bg); }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .sub { color: var(--muted); margin-bottom: 28px; }
+  .row { display: grid; grid-template-columns: 260px 1fr 380px; align-items: center; gap: 0; margin-bottom: 14px; }
+  .key, .dest { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .key code { font: 600 16px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .key .what { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .dest b { display: block; font-size: 15px; }
+  .dest code { white-space: nowrap; color: var(--muted); font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .arrow { position: relative; height: 2px; margin: 0 14px; background: currentColor; }
+  .arrow::after { content: ""; position: absolute; right: -2px; top: -6px; border: 7px solid transparent; border-left: 10px solid currentColor; border-right: 0; }
+  .arrow span { position: absolute; left: 50%; top: -24px; transform: translateX(-50%); font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .blocked { background: none; border-top: 2px dashed currentColor; height: 0; }
+  .blocked::after { display: none; }
+  .blocked span::before { content: "✕  "; color: var(--svc); font-weight: 700; }
+  .live { color: var(--live); } .demo { color: var(--demo); } .svc { color: var(--svc); } .proxy { color: var(--proxy); }
+  .key.live { border-left: 4px solid var(--live); } .key.demo { border-left: 4px solid var(--demo); }
+  .key.svc { border-left: 4px solid var(--svc); } .key.proxy { border-left: 4px solid var(--proxy); }
+  .key code, .dest b { color: var(--text); }
+  .note { color: var(--muted); font-size: 13px; margin-top: 22px; border-top: 1px solid var(--line); padding-top: 14px; }
+</style>
+</head>
+<body>
+<div id="diagram">
+  <h1>Each key has one home</h1>
+  <p class="sub">Production and the demo keep separate key tables — a good key sent to the other one is a plain 401.</p>
+
+  <div class="row">
+    <div class="key live"><code>cru_live_ · cru_test_</code><div class="what">production keys</div></div>
+    <div class="arrow live"><span>moves the endpoint here when stored</span></div>
+    <div class="dest"><b>Production</b><code>https://cruise.bytesbrains.net/v1</code></div>
+  </div>
+
+  <div class="row">
+    <div class="key demo"><code>cru_demo_</code><div class="what">demo keys — free, fabricated answers</div></div>
+    <div class="arrow demo"><span>moves the endpoint here when stored</span></div>
+    <div class="dest"><b>Demo</b><code>https://cruise-demo.bytesbrains.net/v1</code></div>
+  </div>
+
+  <div class="row">
+    <div class="key svc"><code>cru_svc_</code><div class="what">service keys</div></div>
+    <div class="arrow blocked svc"><span>no models on either gateway</span></div>
+    <div class="dest"><b>Neither</b><code>one /payments/* route only</code></div>
+  </div>
+
+  <div class="row">
+    <div class="key proxy"><code>any key</code><div class="what">with a custom endpoint</div></div>
+    <div class="arrow proxy"><span>left exactly as you set it</span></div>
+    <div class="dest"><b>Your proxy → Cruise</b><code>https://proxy.example.com/v1</code></div>
+  </div>
+
+  <p class="note">Set with <b>Cruise: Change endpoint</b>. A rejected key opens a dialog that names the endpoint, the key's kind (never the key) and the fix.</p>
+</div>
+</body>
+</html>

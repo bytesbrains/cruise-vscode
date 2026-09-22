@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# The pinned editor `npm run capture` downloads (scripts/capture/editor.mjs).
+.vscode-test/
 
 # Secrets never enter this repo. A Cruise key in SecretStorage belongs on the
 # machine that holds it — never in git, never in settings.json, never in a VSIX.

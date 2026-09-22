@@ -28,6 +28,10 @@
 This extension is a **client** of Cruise, not a second place spend can happen. Your keys,
 budgets and ledger stay on the gateway.
 
+<p align="center">
+  <img src="media/readme/walkthrough.gif" width="800" alt="Command palette, Cruise: Manage API key, Try the demo, a cru_demo_ key pasted, 'The key works. 7 models available', then Copilot Chat's model picker listing the Cruise lanes: bb/agentic-coding selected, and bb/chat-assistant, bb/code-review, bb/deep-reasoning, bb/extraction, bb/summarization and bb/translation, each at $0.00 on the demo" />
+</p>
+
 ---
 
 ## Try it before anyone issues you a key
@@ -44,6 +48,10 @@ For real traffic, enter a `cru_live_` key with **Cruise: Manage API key** — th
 moves back to `https://cruise.bytesbrains.net/v1` on its own, because a live key is only
 accepted there.
 
+<p align="center">
+  <img src="media/readme/pairing.png" width="720" alt="Which key goes where: cru_live_ and cru_test_ keys to production at cruise.bytesbrains.net/v1, cru_demo_ keys to the demo at cruise-demo.bytesbrains.net/v1, cru_svc_ keys to neither (one /payments/* route only), and any key with a custom endpoint to your proxy, left exactly as you set it" />
+</p>
+
 ## A proxy or your own gateway
 
 Command palette → **Cruise: Change endpoint** → **Custom URL…**, and paste the base URL
@@ -51,9 +59,19 @@ Command palette → **Cruise: Change endpoint** → **Custom URL…**, and paste
 `https://` is required; plain `http://` is allowed only for `localhost`. **Production** and
 **Demo** in the same menu point it back at Cruise.
 
+<p align="center">
+  <img src="media/readme/change-endpoint.png" width="600" alt="Cruise: Change endpoint menu with three choices: Production (current, https://cruise.bytesbrains.net/v1), Demo (https://cruise-demo.bytesbrains.net/v1, takes a cru_demo_ key) and Custom URL… for a proxy or self-hosted Cruise gateway" />
+  <br />
+  <img src="media/readme/custom-endpoint.png" width="600" alt="The custom endpoint input with https://proxy.example.com/v1 entered, noting that the stored key is sent to it as a bearer token" />
+</p>
+
 If a key is rejected, the dialog says which endpoint it went to, what kind of key it was
 (`cru_live_…`, never the key itself), what the gateway answered, and the likely cause —
 with the fix on a button.
+
+<p align="center">
+  <img src="media/readme/rejected-key.png" width="600" alt="The 'Cruise rejected the key (HTTP 401)' dialog: endpoint https://cruise-demo.bytesbrains.net/v1 (demo), key cru_live_… (live key), gateway answered Incorrect API key provided, likely cause a cru_live_ key sent to the demo gateway, with buttons Show log, Replace key…, Change endpoint…, Cancel and Use production endpoint" />
+</p>
 
 ---
 
@@ -98,6 +116,11 @@ extension says which one you hit:
 | **Out of budget** | A period cap. It names when it resets; waiting is the fix |
 | **Out of credit** | A lifetime cap. Waiting does nothing; a credit grant lifts it |
 
+A **rejected key** (`401`, `403`) is explained against the endpoint it was sent to: when you
+are there to read it, a dialog names the endpoint, the key’s kind and the likely cause, with
+the fix on a button (see [A proxy or your own gateway](#a-proxy-or-your-own-gateway)); in the
+chat panel, the error says the same in two sentences.
+
 Anything else — rate limit, stale measurement, a model your key may not call — is passed
 through with Cruise’s own sentence (project and figures), plus whatever the editor can add
 about what to do next. Detail goes to the **BytesBrains Cruise** output channel.
@@ -127,6 +150,8 @@ npm run build
 ```
 
 `npm run package` writes a `.vsix` you can load with **Extensions: Install from VSIX…**.
+`npm run capture` regenerates the pictures above from a scripted editor — see
+[CONTRIBUTING.md](CONTRIBUTING.md#the-readmes-pictures).
 
 Publishing to the Marketplace and Open VSX is a person running a command — not something a
 merge does. See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).

@@ -15,6 +15,12 @@ CODEOWNERS
 CONTRIBUTING.md
 SECURITY.md
 node_modules/**
+# The README's pictures and the script that makes them. The Marketplace
+# fetches the pictures from GitHub (vsce rewrites the README's relative links
+# to the repository's), so shipping them would only make every install bigger.
+scripts/**
+media/readme/**
+.vscode-test/**
 **/*.map
 **/*.vsix
 
