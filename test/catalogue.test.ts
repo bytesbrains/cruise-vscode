@@ -197,6 +197,66 @@ describe("chatModels", () => {
     expect(lane?.tooltip).toContain("deepseek/deepseek-chat, mistral/mistral-small-latest");
   });
 
+  describe("a lane, judged by its members", () => {
+    // As the gateway writes a lane row: each flag the intersection of its
+    // members', so one unmeasured member makes it null (src/lanes.ts there).
+    const laneRow = (members: string[], flags: Record<string, unknown> = {}) =>
+      row("bb/agentic-coding", {
+        lane: true,
+        job: "agentic-coding",
+        members,
+        streaming: null,
+        tools: null,
+        vision: null,
+        measured_at: null,
+        measurement_source: null,
+        ...flags,
+      });
+    const measured = row("deepseek/deepseek-v4-pro", { tools: true, streaming: true, vision: true });
+    const unmeasured = row("mistral/mistral-large-2512", { tools: null, streaming: null, vision: null });
+
+    it("is offered when one member can stream and call tools, though the summary says null (agent mode needs tools)", () => {
+      const models = chatModels(listing(measured, unmeasured, laneRow([measured, unmeasured].map((m) => (m as { id: string }).id))));
+      const lane = models.find((m) => m.id === "bb/agentic-coding");
+      expect(lane).toMatchObject({ toolCalling: true, imageInput: true, family: "cruise-lane" });
+    });
+
+    it("is dropped, with the reason, when no listed member can stream", () => {
+      const skipped: { id: string; reason: string }[] = [];
+      const models = chatModels(listing(unmeasured, laneRow(["mistral/mistral-large-2512"])), skipped);
+      expect(models.map((m) => m.id)).toEqual([]);
+      expect(skipped).toContainEqual({ id: "bb/agentic-coding", reason: "no listed member measured to stream" });
+      expect(skipped).toContainEqual({ id: "mistral/mistral-large-2512", reason: "streaming is null" });
+    });
+
+    it("does not borrow a capability from a member the response does not list", () => {
+      // A member the key cannot see cannot be the one a request is allocated to.
+      const skipped: { id: string; reason: string }[] = [];
+      expect(chatModels(listing(laneRow(["deepseek/deepseek-v4-pro"])), skipped)).toEqual([]);
+      expect(skipped).toEqual([{ id: "bb/agentic-coding", reason: "no listed member measured to stream" }]);
+    });
+
+    it("trusts a summary that is already true, members listed or not", () => {
+      const [lane] = chatModels(listing(laneRow([], { streaming: true, tools: true })));
+      expect(lane).toMatchObject({ id: "bb/agentic-coding", toolCalling: true });
+    });
+
+    it("reads a model's own flags closed, never from a lane", () => {
+      const [model] = chatModels(listing(row("x/model", { tools: null })));
+      expect(model?.toolCalling).toBe(false);
+    });
+  });
+
+  it("says why every other row is not offered", () => {
+    const skipped: { id: string; reason: string }[] = [];
+    chatModels(listing(row("img", { modality: "image" }), row("nolimit", { max_output: null }), { id: "bare" }), skipped);
+    expect(skipped).toEqual([
+      { id: "img", reason: "modality image, not chat" },
+      { id: "nolimit", reason: "no measured limits (max_context 65536, max_output null)" },
+      { id: "bare", reason: "no x-cruise block" },
+    ]);
+  });
+
   it("survives a response that is not the one it expects", () => {
     expect(chatModels(null)).toEqual([]);
     expect(chatModels({})).toEqual([]);
