@@ -77,8 +77,12 @@ export class CruiseChatProvider implements vscode.LanguageModelChatProvider<vsco
     const abort = new AbortController();
     const cancel = token.onCancellationRequested(() => abort.abort());
     try {
-      const models = chatModels(await fetchCatalogue(base, key, abort.signal));
+      const skipped: { id: string; reason: string }[] = [];
+      const models = chatModels(await fetchCatalogue(base, key, abort.signal), skipped);
       this.log.info(`${base} listed ${models.length} chat models for this key`);
+      // Why a row the gateway listed is not in the picker — the question
+      // nothing else in the editor can answer.
+      for (const { id, reason } of skipped) this.log.info(`not in the picker: ${id} — ${reason}`);
       return models.map(informationOf);
     } catch (error) {
       if (abort.signal.aborted) return [];

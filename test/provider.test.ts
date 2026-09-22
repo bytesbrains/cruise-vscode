@@ -93,6 +93,14 @@ describe("listing models", () => {
     expect(listed).toMatchObject([{ id: "bb/extraction", family: "cruise-lane", capabilities: { toolCalling: true, imageInput: false } }]);
   });
 
+  it("says in the output channel why a listed row is not in the picker", async () => {
+    stub(Response.json({ object: "list", data: [...catalogue.data, { id: "bb/image-gen", object: "model", "x-cruise": { modality: "image" } }] }));
+    const { provider: p, secrets } = provider();
+    await secrets.store("cruise.apiKey", "cru_live_abc");
+    await p.provideLanguageModelChatInformation({ silent: true }, new vscode.CancellationTokenSource().token);
+    expect(state.logged).toContainEqual({ level: "info", message: "not in the picker: bb/image-gen — modality image, not chat" });
+  });
+
   it("swallows a refusal into an empty list, and says so only when asked", async () => {
     stub(Response.json({ error: { code: null, message: "bad key" } }, { status: 401 }));
     const { provider: p, secrets } = provider();

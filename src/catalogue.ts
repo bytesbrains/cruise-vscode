@@ -124,23 +124,55 @@ const hasComponents = (pricing: unknown): boolean =>
  *   measured, which reads the same way — cannot honour it.
  * - **A malformed row.** Parsed defensively rather than trusted: this is the
  *   one place a gateway response reaches the editor's model list.
+ *
+ * **A lane is judged by its members, not by its summary.** The gateway's lane
+ * row reports each capability as the *intersection* of its members' — true
+ * only when every member has it, null when any is unmeasured (`src/lanes.ts`
+ * in the gateway). That is the right promise for "every request fits every
+ * member", and the wrong test for "can this lane serve a streamed request
+ * with tools": allocation gates each member per request (`lanes-allocate.ts`)
+ * and serves it from one that can. So a lane streams, calls tools or reads
+ * images when any member listed in the same response does. Read from the
+ * summary alone, one unmeasured member drops a lane out of the picker the
+ * gateway would have served — and agent mode lists only models with tools.
+ *
+ * `skipped`, when given, collects every dropped row with its reason, so the
+ * output channel can say why something is not in the picker.
  */
-export function chatModels(body: unknown): CruiseModel[] {
+export function chatModels(body: unknown, skipped?: { id: string; reason: string }[]): CruiseModel[] {
   if (!isRecord(body) || !Array.isArray(body["data"])) return [];
   const models: CruiseModel[] = [];
+  const rows = (body["data"] as CatalogueRow[]).filter(
+    (entry): entry is CatalogueRow & { id: string } => isRecord(entry) && typeof entry.id === "string",
+  );
+  const byId = new Map(rows.map((entry) => [entry.id, entry]));
+  const skip = (id: string, reason: string) => skipped?.push({ id, reason });
 
-  for (const entry of body["data"] as CatalogueRow[]) {
-    if (!isRecord(entry) || typeof entry.id !== "string") continue;
+  for (const entry of rows) {
     const x = entry["x-cruise"];
-    if (!isRecord(x)) continue;
-    if (x["modality"] !== "chat") continue;
-    if (!flag(x["streaming"])) continue;
+    if (!isRecord(x)) {
+      skip(entry.id, "no x-cruise block");
+      continue;
+    }
+    if (x["modality"] !== "chat") {
+      skip(entry.id, `modality ${String(x["modality"])}, not chat`);
+      continue;
+    }
+    const lane = flag(x["lane"]);
+    const capable = (capability: "streaming" | "tools" | "vision") => (lane ? laneCan(x, byId, capability) : flag(x[capability]));
+
+    if (!capable("streaming")) {
+      skip(entry.id, lane ? "no listed member measured to stream" : `streaming is ${String(x["streaming"])}`);
+      continue;
+    }
 
     const maxInputTokens = positiveInt(x["max_context"]);
     const maxOutputTokens = positiveInt(x["max_output"]);
-    if (maxInputTokens === null || maxOutputTokens === null) continue;
+    if (maxInputTokens === null || maxOutputTokens === null) {
+      skip(entry.id, `no measured limits (max_context ${String(x["max_context"])}, max_output ${String(x["max_output"])})`);
+      continue;
+    }
 
-    const lane = flag(x["lane"]);
     const owner = typeof entry.owned_by === "string" ? entry.owned_by : "cruise";
     const rates = dearestRates(x["pricing"]);
 
@@ -161,14 +193,29 @@ export function chatModels(body: unknown): CruiseModel[] {
       maxInputTokens,
       maxOutputTokens,
       // Read closed: `null` is never measured, and the gate refuses a request
-      // needing an unmeasured capability rather than attempting it. A lane's
-      // flag is already the intersection of its members' (`src/lanes.ts`).
-      toolCalling: flag(x["tools"]),
-      imageInput: flag(x["vision"]),
+      // needing an unmeasured capability rather than attempting it. For a
+      // lane, any member that has it — see above.
+      toolCalling: capable("tools"),
+      imageInput: capable("vision"),
     });
   }
 
   return models;
+}
+
+/**
+ * Whether some member of a lane, as listed in the same response, has
+ * `capability` measured true — the lane's own summary first, since true there
+ * means every member. A member the key cannot see is not listed, and cannot be
+ * the one a request is allocated to either.
+ */
+function laneCan(x: Record<string, unknown>, byId: Map<string, CatalogueRow>, capability: "streaming" | "tools" | "vision"): boolean {
+  if (flag(x[capability])) return true;
+  const members = Array.isArray(x["members"]) ? x["members"].filter((m): m is string => typeof m === "string") : [];
+  return members.some((id) => {
+    const member = byId.get(id)?.["x-cruise"];
+    return isRecord(member) && member["modality"] === "chat" && flag(member[capability]);
+  });
 }
 
 /** The line beside the name in the picker. Short: it competes for width. */
