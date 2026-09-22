@@ -21,6 +21,7 @@
  */
 
 import * as vscode from "vscode";
+import { DEMO_ENDPOINT, PRODUCTION_ENDPOINT, realignment } from "./pairing.ts";
 
 /**
  * The one entry this extension writes to the keychain. This is the entry's
@@ -33,14 +34,25 @@ import * as vscode from "vscode";
 const KEYCHAIN_ENTRY = "cruise.apiKey";
 
 const ENDPOINT_SETTING = "cruise.endpoint";
-const DEFAULT_ENDPOINT = "https://cruise.bytesbrains.net/v1";
 
-export const DEMO_ENDPOINT = "https://cruise-demo.bytesbrains.net/v1";
+export { DEMO_ENDPOINT };
 
 /** The configured data plane, or production. */
 export function endpoint(): string {
   const configured = vscode.workspace.getConfiguration().get<string>(ENDPOINT_SETTING);
-  return configured === undefined || configured.trim() === "" ? DEFAULT_ENDPOINT : configured.trim();
+  return configured === undefined || configured.trim() === "" ? PRODUCTION_ENDPOINT : configured.trim();
+}
+
+/**
+ * Point the extension at a data plane. `undefined` removes the setting rather
+ * than writing production's URL into it, so a user on the default keeps
+ * following the default.
+ *
+ * Global rather than workspace: the setting is `machine`-scoped (see above),
+ * and the endpoint is a property of the person, not of the folder open.
+ */
+export async function setEndpoint(value: string | undefined): Promise<void> {
+  await vscode.workspace.getConfiguration().update(ENDPOINT_SETTING, value, vscode.ConfigurationTarget.Global);
 }
 
 /** The stored key, or `undefined` when the user has not signed in. */
@@ -94,5 +106,25 @@ export async function promptForKey(secrets: vscode.SecretStorage): Promise<strin
   }
 
   await storeKey(secrets, key);
+  await realign(key);
   return key;
+}
+
+/**
+ * Send the key to the deployment it belongs to. #16: "Try the demo" wrote the
+ * demo endpoint and nothing ever wrote it back, so every live key after it was
+ * "Incorrect API key" — a correct key, sent to a gateway whose key table has
+ * never held it. The prefix names the deployment, so there is nothing to ask:
+ * move the endpoint and say so. A custom endpoint is left alone
+ * (`realignment`), because a proxy was chosen on purpose.
+ */
+async function realign(key: string): Promise<void> {
+  const target = realignment(key, endpoint());
+  if (target === null) return;
+  await setEndpoint(target === "production" ? undefined : DEMO_ENDPOINT);
+  vscode.window.showInformationMessage(
+    target === "production"
+      ? `Switched the endpoint to production (${PRODUCTION_ENDPOINT}) — a production key is not accepted by the demo gateway.`
+      : `Switched the endpoint to the demo (${DEMO_ENDPOINT}) — a cru_demo_ key is not accepted by production.`,
+  );
 }

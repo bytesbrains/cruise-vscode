@@ -100,7 +100,8 @@ describe("listing models", () => {
     expect(await p.provideLanguageModelChatInformation({ silent: true }, new vscode.CancellationTokenSource().token)).toEqual([]);
     expect(state.shown).toEqual([]);
     expect(await p.provideLanguageModelChatInformation({ silent: false }, new vscode.CancellationTokenSource().token)).toEqual([]);
-    expect(state.shown).toMatchObject([{ level: "error", message: expect.stringContaining("Manage API key") }]);
+    // A rejected key the user asked about gets the diagnosis dialog, not a toast.
+    expect(state.shown).toMatchObject([{ level: "error", modal: true, detail: expect.stringContaining("rejected the key itself") }]);
   });
 });
 
@@ -176,6 +177,18 @@ describe("the response that comes back", () => {
     const error: unknown = await responseOf(p, [userTurn(new vscode.LanguageModelTextPart("hi"))]).run.catch((e: unknown) => e);
     expect(error).toMatchObject({ code: "NoPermissions", message: expect.stringContaining("Manage API key") });
     expect((error as Error).cause).toBeInstanceOf(GatewayError);
+  });
+
+  it("says in the chat panel when the key was sent to the wrong deployment (#16)", async () => {
+    stub(Response.json({ error: { code: null, message: "Incorrect API key provided." } }, { status: 401 }));
+    state.settings.set("cruise.endpoint", "https://cruise-demo.bytesbrains.net/v1");
+    const { provider: p, secrets } = provider();
+    await secrets.store("cruise.apiKey", "cru_live_abc");
+    const error: unknown = await responseOf(p, [userTurn(new vscode.LanguageModelTextPart("hi"))]).run.catch((e: unknown) => e);
+    expect(error).toMatchObject({ code: "NoPermissions", message: expect.stringContaining("sent to the demo gateway") });
+    expect((error as Error).message).toContain("Change endpoint");
+    // A modal over the chat panel on every retry would be worse than the bug.
+    expect(state.shown).toEqual([]);
   });
 
   it("throws a spending refusal as a plain error whose cause still carries the code", async () => {

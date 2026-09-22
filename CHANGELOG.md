@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.5 — unreleased
+
+Fixes [#16](https://github.com/bytesbrains/cruise-vscode/issues/16): after **Try the demo**,
+a real `cru_live_` key was rejected as "Incorrect API key", because the endpoint stayed on
+the demo gateway and nothing in the extension moved it back.
+
+- Storing a key now moves the endpoint to the deployment that key belongs to: a
+  `cru_live_` / `cru_test_` key goes to production, a `cru_demo_` key goes to the demo. A
+  custom endpoint is never touched.
+- A rejected key gets a dialog with the details: the endpoint (production, demo or
+  custom), the key's kind (prefix only), the gateway's answer, the likely cause (live key on
+  demo, demo key on production, a service key, a non-Cruise key, a proxy in the path, or the
+  key itself), and buttons to switch the endpoint, change it, replace the key or open the log.
+  The chat panel's error carries the same diagnosis.
+- New **Cruise: Change endpoint** command (also in the Manage menu): Production, Demo, or a
+  custom URL for a proxy or self-hosted gateway. `https://` is required; `http://` only for
+  `localhost`.
+- A local `.env` (and other secret files) can no longer end up in a locally packaged VSIX.
+
 ## 0.1.4 — 2026-09-13
 
 README wordmark and clearer sections; tag-triggered release workflow for Marketplace

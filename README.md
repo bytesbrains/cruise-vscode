@@ -40,8 +40,20 @@ That points `cruise.endpoint` at `https://cruise-demo.bytesbrains.net/v1` — pr
 model ids exactly, every price zero, and no provider credential in the deployment. Answers
 are fabricated. It costs nothing to take.
 
-For real traffic, set the endpoint back to `https://cruise.bytesbrains.net/v1` and enter a
-`cru_live_` key the same way.
+For real traffic, enter a `cru_live_` key with **Cruise: Manage API key** — the endpoint
+moves back to `https://cruise.bytesbrains.net/v1` on its own, because a live key is only
+accepted there.
+
+## A proxy or your own gateway
+
+Command palette → **Cruise: Change endpoint** → **Custom URL…**, and paste the base URL
+(e.g. `https://proxy.example.com/v1`). The stored key is sent to it as a bearer token, so
+`https://` is required; plain `http://` is allowed only for `localhost`. **Production** and
+**Demo** in the same menu point it back at Cruise.
+
+If a key is rejected, the dialog says which endpoint it went to, what kind of key it was
+(`cru_live_…`, never the key itself), what the gateway answered, and the likely cause —
+with the fix on a button.
 
 ---
 

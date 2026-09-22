@@ -16,8 +16,10 @@
 import * as vscode from "vscode";
 import { chatModels, type CruiseModel } from "./catalogue.ts";
 import { endpoint, promptForKey, storedKey } from "./credentials.ts";
+import { showCredentialProblem } from "./dialog.ts";
 import { fetchCatalogue, GatewayError, streamCompletion, type ChatRequest } from "./gateway.ts";
 import { estimateTokens, estimateTurnTokens, toChatMessages, type Part, type Turn } from "./messages.ts";
+import { diagnose } from "./pairing.ts";
 import { explain } from "./refusal.ts";
 import { NotAStreamError, readCompletionStream } from "./stream.ts";
 
@@ -82,7 +84,14 @@ export class CruiseChatProvider implements vscode.LanguageModelChatProvider<vsco
       // provider that cannot answer must not take the list down with it. Said
       // out loud only when the user asked — a background enumeration that
       // fails is a log line, not a notification.
-      const sentence = sentenceOf(error);
+      if (!options.silent && error instanceof GatewayError && explain(error.refusal).credentials) {
+        // Not awaited: the picker is waiting on this list, and it should not
+        // sit open behind a modal. A switch moves the setting, and the
+        // configuration listener refreshes the list from there.
+        void showCredentialProblem(error.refusal, key, base, this.log);
+        return [];
+      }
+      const sentence = sentenceOf(error, key);
       this.log.error(`${base} could not list models: ${sentence}`);
       if (!options.silent) vscode.window.showErrorMessage(sentence);
       return [];
@@ -124,7 +133,7 @@ export class CruiseChatProvider implements vscode.LanguageModelChatProvider<vsco
     } catch (error) {
       // A user pressing stop is not a failure to report.
       if (abort.signal.aborted || token.isCancellationRequested) return;
-      const sentence = sentenceOf(error);
+      const sentence = sentenceOf(error, key);
       this.log.error(`${model.id}: ${sentence}`);
       // The sentence is for the person in the chat panel. The original is
       // kept as `cause` for the extension that called `sendRequest` and wants
@@ -258,8 +267,14 @@ function plainTextOf(part: unknown): string {
 }
 
 /** What to show a person, for anything that can be thrown here. */
-function sentenceOf(error: unknown): string {
-  if (error instanceof GatewayError) return explain(error.refusal).message;
+function sentenceOf(error: unknown, key: string): string {
+  if (error instanceof GatewayError) {
+    // A rejected key is explained against the endpoint it was sent to: a
+    // correct key on the wrong deployment reads exactly like a bad one (#16).
+    return explain(error.refusal).credentials
+      ? diagnose(error.refusal, key, endpoint()).sentence
+      : explain(error.refusal).message;
+  }
   // The gateway was reached and answered; it is the answer that was wrong.
   if (error instanceof NotAStreamError) return error.message;
   if (error instanceof Error) {
