@@ -21,6 +21,10 @@ the demo gateway and nothing in the extension moved it back.
   custom URL for a proxy or self-hosted gateway. `https://` is required; `http://` only for
   `localhost`.
 - A local `.env` (and other secret files) can no longer end up in a locally packaged VSIX.
+- Requires VS Code 1.106 or later (was 1.104). Image and data parts use
+  `LanguageModelDataPart`, which is not in the API before 1.106, so on 1.104 and 1.105 a
+  message carrying one threw instead of being sent. The types are now pinned to the
+  minimum, so the typecheck catches the next such call.
 
 ## 0.1.4 — 2026-09-13
 
