@@ -1,9 +1,10 @@
 # Ship a tagged release to the Visual Studio Marketplace, Open VSX, and GitHub
 # Releases. Triggered only by a `v*` tag (or a manual re-run), never by a merge.
 #
-# The person cutting the tag is the publish decision. Bump `package.json`
-# version and `CHANGELOG.md` on `main` first; the tag must match that version
-# (`v0.1.4` ↔ `"version": "0.1.4"`).
+# The person cutting the tag is the publish decision. The version bump and
+# `CHANGELOG.md` go to `dev`, reach `main` in the dev → main release PR, and
+# the tag is cut on `main` — this workflow refuses one that is not. It must
+# match `package.json` (`v0.1.4` ↔ `"version": "0.1.4"`).
 #
 # Required repository secrets (Settings → Secrets and variables → Actions):
 #   VSCE_PAT  — Azure DevOps PAT, Marketplace → Manage, for publisher `bytesbrains`
@@ -65,6 +66,19 @@ jobs:
           ref: refs/tags/${{ steps.tag.outputs.tag }}
           fetch-depth: 0
 
+      - name: Require the tag to be on main
+        # A release is what `main` holds (CONTRIBUTING.md → Releasing). A tag
+        # on `dev` or a feature branch would publish code no release PR brought in.
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "refs/tags/$TAG" FETCH_HEAD; then
+            echo "::error::$TAG is not on main. Tag a commit on main, after the dev → main release PR has merged."
+            exit 1
+          fi
+
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -106,7 +120,12 @@ jobs:
         run: npm run build
 
       - name: Package VSIX
-        run: npx vsce package --no-dependencies -o "bytesbrains-cruise-${{ steps.tag.outputs.version }}.vsix"
+        # README links pinned to this tag. vsce otherwise uses the default
+        # branch, which is `dev`, so the listing would show unreleased pictures.
+        run: |
+          npx vsce package --no-dependencies -o "bytesbrains-cruise-${{ steps.tag.outputs.version }}.vsix" \
+            --baseContentUrl "https://github.com/${{ github.repository }}/blob/${{ steps.tag.outputs.tag }}/" \
+            --baseImagesUrl "https://github.com/${{ github.repository }}/raw/${{ steps.tag.outputs.tag }}/"
 
       - name: Publish to Visual Studio Marketplace
         run: npx vsce publish --no-dependencies --packagePath "bytesbrains-cruise-${{ steps.tag.outputs.version }}.vsix"

@@ -10,7 +10,26 @@ Thanks for caring about the extension. This repo is the source of truth for
   (`VSCE_PAT`, `OVSX_PAT`) or in a maintainer's local environment for a manual retry.
 - **No telemetry, no second host.** The extension talks only to the configured `cruise.endpoint`.
 - **Do not commit `dist/`, `*.vsix`, or `node_modules/`.** They are build artifacts.
-- Prefer a pull request into `dev` (or `main` for a hotfix). Both branches are protected.
+- **Every change is a pull request into `dev`** — features, fixes, hotfixes and dependency
+  bumps alike. **`main` only takes release pull requests from `dev`**, and releases are tagged
+  on `main`. See [Branches](#branches).
+
+## Branches
+
+| Branch | Takes | Merge | Rules (no bypass, admins included) |
+| --- | --- | --- | --- |
+| `dev` (default) | pull requests from any branch | **squash** | `check` green · conversations resolved · no force-push or deletion |
+| `main` | pull requests **from `dev` only** | **merge commit** | `check` and `source-branch` green · conversations resolved · no force-push or deletion |
+| `v*` tags | cut on `main` | — | cannot be moved or deleted; `release` refuses a tag not on `main` |
+
+`source-branch` (`.github/workflows/branch-policy.yml`) is what enforces "from `dev` only".
+GitHub's branch rules cannot express that on their own. A release is a merge commit, not a
+squash, so `main` keeps `dev`'s commits and the two never diverge. After a release `dev` is
+just behind `main` by that merge commit, which is harmless.
+
+Nothing bypasses these rules, not even an admin. In a real emergency, an admin can disable
+a ruleset under **Settings → Rules** and turn it back on afterwards. That is deliberate and
+leaves a record.
 
 ## Setup
 
@@ -76,16 +95,20 @@ image links to this repository on GitHub, and that is where the Marketplace load
 A release is a **tag**, not a merge. The `release` workflow publishes to the Marketplace and
 Open VSX, then attaches the VSIX to a GitHub Release.
 
-1. On `main`, bump `version` in `package.json` and update `CHANGELOG.md`.
-2. Merge that PR (wait for `check`).
-3. Tag and push:
+1. In a PR into `dev`, bump `version` in `package.json` and date its `CHANGELOG.md` section.
+2. Open a PR from `dev` into `main` titled `Release v0.x.y`. Wait for `check` and
+   `source-branch`, then merge it with a **merge commit** (the only method `main` allows).
+3. Tag that merge commit on `main` and push the tag:
 
 ```sh
-git tag v0.x.y main
+git fetch origin
+git tag v0.x.y origin/main
 git push origin v0.x.y
 ```
 
-The tag **must** match `package.json` (`v0.1.4` ↔ `"0.1.4"`). The workflow fails closed if
+The tag **must** match `package.json` (`v0.1.4` ↔ `"0.1.4"`) and be on `main`; the workflow
+refuses anything else. A pushed `v*` tag cannot be moved or deleted, so a bad release is fixed
+by the next version, not by retagging. The workflow fails closed if
 `VSCE_PAT` or `OVSX_PAT` is missing.
 
 To retry a failed publish without retagging: **Actions → release → Run workflow** and pass the
@@ -102,7 +125,7 @@ npm run publish:openvsx
 
 ## Pull requests
 
-1. Branch from `dev`.
+1. Branch from `dev`, and open the PR against `dev` (the default).
 2. Keep the change one concern.
 3. Make sure `npm test`, `npm run typecheck`, and `npm run build` are green locally.
 4. Open a PR; wait for `check` to pass.

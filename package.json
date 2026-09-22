@@ -85,9 +85,9 @@
     "capture": "node scripts/capture/capture.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "package": "npm run build && vsce package --no-dependencies",
-    "publish:marketplace": "npm run build && vsce publish --no-dependencies",
-    "publish:openvsx": "npm run build && ovsx publish --no-dependencies",
+    "package": "npm run build && vsce package --no-dependencies --baseContentUrl https://github.com/bytesbrains/cruise-vscode/blob/main/ --baseImagesUrl https://github.com/bytesbrains/cruise-vscode/raw/main/",
+    "publish:marketplace": "npm run build && vsce publish --no-dependencies --baseContentUrl https://github.com/bytesbrains/cruise-vscode/blob/main/ --baseImagesUrl https://github.com/bytesbrains/cruise-vscode/raw/main/",
+    "publish:openvsx": "npm run build && ovsx publish --no-dependencies --baseContentUrl https://github.com/bytesbrains/cruise-vscode/blob/main/ --baseImagesUrl https://github.com/bytesbrains/cruise-vscode/raw/main/",
     "secrets:scan": "gitleaks detect --source . --redact --no-banner --config .gitleaks.toml"
   },
   "devDependencies": {
