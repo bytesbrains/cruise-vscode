@@ -116,9 +116,12 @@ async function stage() {
  */
 async function assembleGif(frames, out) {
   const list = path.join(path.dirname(frames[0].file), "frames.txt");
-  const lines = frames.flatMap(({ file, ms }) => [`file '${file}'`, `duration ${(ms / 1000).toFixed(3)}`]);
+  // Quoted as the concat demuxer reads it: a `'` in the temp directory's path
+  // would otherwise end the name early.
+  const quote = (file) => `'${file.replaceAll("'", "'\\''")}'`;
+  const lines = frames.flatMap(({ file, ms }) => [`file ${quote(file)}`, `duration ${(ms / 1000).toFixed(3)}`]);
   // The concat demuxer drops the last frame's duration unless it is listed again.
-  lines.push(`file '${frames.at(-1).file}'`);
+  lines.push(`file ${quote(frames.at(-1).file)}`);
   fs.writeFileSync(list, lines.join("\n"));
   execFileSync("ffmpeg", [
     "-y", "-loglevel", "error",
