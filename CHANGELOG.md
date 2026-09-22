@@ -26,6 +26,12 @@ the demo gateway and nothing in the extension moved it back.
   message carrying one threw instead of being sent. The types are now pinned to the
   minimum, so the typecheck catches the next such call.
 
+- Dialogs, notifications and chat errors named commands in markdown (`**Cruise: Change
+  endpoint**`), which the editor shows with the asterisks visible. They now use quotes.
+- The README shows setup: a walkthrough of the demo, the endpoint menu, the rejected-key
+  dialog and which key goes where. Each one is regenerated with `npm run capture`, a script that
+  drives a real editor against a local mock gateway.
+
 ## 0.1.4 — 2026-09-13
 
 README wordmark and clearer sections; tag-triggered release workflow for Marketplace

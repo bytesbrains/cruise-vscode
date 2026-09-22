@@ -139,3 +139,19 @@ describe("diagnose", () => {
     expect(d.detail).toContain("HTTP 429 too_many_auth_failures");
   });
 });
+
+describe("the words a person reads", () => {
+  it("carry no markdown — a modal, a notification and a chat error all show it as typed", () => {
+    // The README's rejected-key still showed "**Cruise: Change endpoint**"
+    // with the asterisks: `detail` is plain text, and so is a toast.
+    const refusals: Refusal[] = [401, 403].map((status) => ({ status, code: null, message: "Incorrect API key provided.", retryAfter: null }));
+    for (const refusal of refusals) {
+      for (const key of [live, test_, demo, svc, "sk-other"]) {
+        for (const endpoint of [PRODUCTION_ENDPOINT, DEMO_ENDPOINT, PROXY]) {
+          const { sentence, detail } = diagnose(refusal, key, endpoint);
+          expect(`${sentence}\n${detail}`).not.toMatch(/\*\*|__|`/);
+        }
+      }
+    }
+  });
+});

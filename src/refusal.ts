@@ -93,7 +93,7 @@ export function explain(refusal: Refusal): { message: string; credentials: boole
     // where the user sits — the key they have is not opening anything.
     case "too_many_auth_failures":
       return {
-        message: `${refusal.message}${wait === null ? "" : ` Try again in about ${wait}.`} Check the key with **Cruise: Manage API key** before retrying.`,
+        message: `${refusal.message}${wait === null ? "" : ` Try again in about ${wait}.`} Check the key with "Cruise: Manage API key" before retrying.`,
         credentials: true,
       };
 
@@ -134,7 +134,7 @@ export function explain(refusal: Refusal): { message: string; credentials: boole
       // gets Cruise's own sentence, which is usually better than ours.
       if (refusal.status === 401 || refusal.status === 403) {
         return {
-          message: `${refusal.message} Run **Cruise: Manage API key** to store a working key.`,
+          message: `${refusal.message} Run "Cruise: Manage API key" to store a working key.`,
           credentials: true,
         };
       }
