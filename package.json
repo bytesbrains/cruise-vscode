@@ -87,7 +87,7 @@
     "package": "npm run build && vsce package --no-dependencies",
     "publish:marketplace": "npm run build && vsce publish --no-dependencies",
     "publish:openvsx": "npm run build && ovsx publish --no-dependencies",
-    "secrets:scan": "gitleaks detect --source . --redact --no-banner"
+    "secrets:scan": "gitleaks detect --source . --redact --no-banner --config .gitleaks.toml"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
