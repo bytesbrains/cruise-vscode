@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.7 — 2026-09-22
+
+- The README's Marketplace badge read "retired badge": shields.io has retired its Visual Studio
+  Marketplace badges. It now comes from `vsmarketplacebadges.dev`, which `vsce` trusts for SVG.
+  The Marketplace listing keeps the old badge until the next publish, because the page renders
+  the README from the published VSIX.
+
 ## 0.1.6 — 2026-09-22
 
 - Lanes (`bb/agentic-coding`, `bb/extraction`, …) are offered when any of their members can
