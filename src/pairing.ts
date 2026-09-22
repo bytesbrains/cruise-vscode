@@ -150,7 +150,7 @@ function causeOf(
   if (kind === "svc") {
     return {
       cause: "This is a cru_svc_ service key. Service keys authorise one /payments/* route and cannot list or call models on any gateway.",
-      advice: "Replace it with a cru_live_ key (or a cru_demo_ key for the demo) via **Cruise: Manage API key**.",
+      advice: `Replace it with a cru_live_ key (or a cru_demo_ key for the demo) via "Cruise: Manage API key".`,
     };
   }
 
@@ -158,25 +158,25 @@ function causeOf(
     return where === "custom"
       ? {
           cause: "The stored key does not start with cru_, so it is not a Cruise key. If your proxy issues its own keys, it rejected this one.",
-          advice: "Check the key with whoever runs the proxy, or store a Cruise key via **Cruise: Manage API key**.",
+          advice: `Check the key with whoever runs the proxy, or store a Cruise key via "Cruise: Manage API key".`,
         }
       : {
           cause: "The stored key does not start with cru_, so it is not a Cruise key — an OpenAI or other provider key will not work here.",
-          advice: "Store a cru_live_ key (or cru_demo_ for the demo) via **Cruise: Manage API key**.",
+          advice: `Store a cru_live_ key (or cru_demo_ for the demo) via "Cruise: Manage API key".`,
         };
   }
 
   if (where === "demo" && (kind === "live" || kind === "test")) {
     return {
       cause: `A cru_${kind}_ key was sent to the demo gateway, which has its own key table and only accepts cru_demo_ keys.`,
-      advice: "Switch the endpoint to production — **Cruise: Change endpoint** → Production.",
+      advice: `Switch the endpoint to production — "Cruise: Change endpoint" → Production.`,
     };
   }
 
   if (where === "production" && kind === "demo") {
     return {
       cause: "A cru_demo_ key was sent to the production gateway, which does not accept demo keys.",
-      advice: "Switch the endpoint to the demo — **Cruise: Change endpoint** → Demo — or store a cru_live_ key.",
+      advice: `Switch the endpoint to the demo — "Cruise: Change endpoint" → Demo — or store a cru_live_ key.`,
     };
   }
 
@@ -184,7 +184,7 @@ function causeOf(
     const home = homeOf(kind) === "demo" ? DEMO_ENDPOINT : PRODUCTION_ENDPOINT;
     return {
       cause: `The endpoint is a custom URL (${hostOf(endpoint)}), so the key went through it rather than straight to Cruise. It may not forward the Authorization header, may expect its own credential, or may front a Cruise deployment this key does not belong to (a cru_${kind}_ key belongs on ${home}).`,
-      advice: "Check the proxy, or point the endpoint straight at Cruise with **Cruise: Change endpoint**.",
+      advice: `Check the proxy, or point the endpoint straight at Cruise with "Cruise: Change endpoint".`,
     };
   }
 
@@ -196,7 +196,7 @@ function causeOf(
       }
     : {
         cause: `The key and the endpoint match (a ${kind} key on ${where}), so the gateway rejected the key itself: it may be revoked, expired, mistyped, or issued by a different account.`,
-        advice: "Check the key in the Cruise dashboard and store it again with **Cruise: Manage API key**.",
+        advice: `Check the key in the Cruise dashboard and store it again with "Cruise: Manage API key".`,
       };
 }
 

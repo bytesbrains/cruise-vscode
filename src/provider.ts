@@ -113,7 +113,7 @@ export class CruiseChatProvider implements vscode.LanguageModelChatProvider<vsco
     const key = await storedKey(this.secrets);
     if (key === undefined) {
       throw vscode.LanguageModelError.NoPermissions(
-        "No Cruise API key is stored. Run **Cruise: Manage API key**.",
+        `No Cruise API key is stored. Run "Cruise: Manage API key".`,
       );
     }
 

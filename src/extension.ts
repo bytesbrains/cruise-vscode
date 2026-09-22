@@ -154,7 +154,7 @@ async function changeEndpoint(context: vscode.ExtensionContext, log: vscode.LogO
 
   const key = await storedKey(context.secrets);
   if (key === undefined) {
-    vscode.window.showInformationMessage(`Endpoint set to ${endpoint()}. Run **Cruise: Manage API key** to sign in.`);
+    vscode.window.showInformationMessage(`Endpoint set to ${endpoint()}. Run "Cruise: Manage API key" to sign in.`);
     return;
   }
   await verify(key, log);
