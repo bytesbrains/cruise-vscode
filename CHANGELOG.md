@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.5 — unreleased
+## 0.1.5 — 2026-09-22
 
 Fixes [#16](https://github.com/bytesbrains/cruise-vscode/issues/16): after **Try the demo**,
 a real `cru_live_` key was rejected as "Incorrect API key", because the endpoint stayed on
@@ -25,7 +25,6 @@ the demo gateway and nothing in the extension moved it back.
   `LanguageModelDataPart`, which is not in the API before 1.106, so on 1.104 and 1.105 a
   message carrying one threw instead of being sent. The types are now pinned to the
   minimum, so the typecheck catches the next such call.
-
 - Dialogs, notifications and chat errors named commands in markdown (`**Cruise: Change
   endpoint**`), which the editor shows with the asterisks visible. They now use quotes.
 - The README shows setup: a walkthrough of the demo, the endpoint menu, the rejected-key
