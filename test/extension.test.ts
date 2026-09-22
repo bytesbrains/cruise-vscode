@@ -149,6 +149,44 @@ describe("a key and an endpoint that do not belong together (#16)", () => {
     ]);
   });
 
+  it("never lets the model list see the new key on the old endpoint", async () => {
+    // Review of #17: storing the key announces it, the listener refreshes, and
+    // an enumeration that ran before the endpoint moved sent a live key to the
+    // demo — a second rejection during the very transition #16 fixes.
+    stub(Response.json(emptyCatalogue));
+    const ctx = context();
+    await ctx.secrets.store("cruise.apiKey", "cru_demo_abc");
+    state.settings.set("cruise.endpoint", DEMO);
+    activate(ctx as unknown as vscode.ExtensionContext);
+    const provider = state.providers.get("cruise") as vscode.LanguageModelChatProvider;
+    const listed: Promise<unknown>[] = [];
+    provider.onDidChangeLanguageModelChatInformation?.(() => {
+      listed.push(Promise.resolve(provider.provideLanguageModelChatInformation({ silent: true }, new vscode.CancellationTokenSource().token)));
+    });
+    state.quickPick = "set";
+    state.inputBox = "cru_live_abc";
+    await runManage();
+    await Promise.all(listed);
+    expect(listed.length).toBeGreaterThan(0);
+    const sent = vi.mocked(globalThis.fetch).mock.calls.map(([url, init]) => [
+      String(url),
+      new Headers((init as RequestInit | undefined)?.headers).get("authorization"),
+    ]);
+    expect(sent.filter(([url, auth]) => (url ?? "").startsWith(DEMO) !== (auth ?? "").includes("cru_demo_"))).toEqual([]);
+  });
+
+  it("leaves the endpoint where it was when the demo's key prompt is cancelled", async () => {
+    // Writing the demo endpoint before asking for its key left a live key
+    // pointed at the demo on a cancel — #16 again, one Escape away.
+    const ctx = context();
+    await ctx.secrets.store("cruise.apiKey", "cru_live_abc");
+    activate(ctx as unknown as vscode.ExtensionContext);
+    state.quickPick = "demo";
+    state.inputBox = undefined;
+    await runManage();
+    expect(state.updates).toEqual([]);
+  });
+
   it("leaves a proxy alone whatever the key", async () => {
     stub(Response.json(emptyCatalogue));
     const ctx = context();

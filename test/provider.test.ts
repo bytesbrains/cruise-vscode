@@ -191,6 +191,35 @@ describe("the response that comes back", () => {
     expect(state.shown).toEqual([]);
   });
 
+  it("diagnoses against the endpoint the request went to, not the one set since (review of #17)", async () => {
+    let answer!: (response: Response) => void;
+    globalThis.fetch = vi.fn(() => new Promise<Response>((resolve) => (answer = resolve))) as unknown as typeof fetch;
+    state.settings.set("cruise.endpoint", "https://cruise-demo.bytesbrains.net/v1");
+    const { provider: p, secrets } = provider();
+    await secrets.store("cruise.apiKey", "cru_live_abc");
+    const { run } = responseOf(p, [userTurn(new vscode.LanguageModelTextPart("hi"))]);
+    await vi.waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
+    // The user moves to production while the demo is still answering.
+    state.settings.set("cruise.endpoint", undefined);
+    answer(Response.json({ error: { code: null, message: "Incorrect API key provided." } }, { status: 401 }));
+    const error: unknown = await run.catch((e: unknown) => e);
+    expect((error as Error).message).toContain("sent to the demo gateway");
+  });
+
+  it("names the endpoint that could not be reached, not the one set since", async () => {
+    let fail!: (error: Error) => void;
+    globalThis.fetch = vi.fn(() => new Promise<Response>((_, reject) => (fail = reject))) as unknown as typeof fetch;
+    state.settings.set("cruise.endpoint", "https://proxy.example.com/v1");
+    const { provider: p, secrets } = provider();
+    await secrets.store("cruise.apiKey", "cru_live_abc");
+    const listing = p.provideLanguageModelChatInformation({ silent: true }, new vscode.CancellationTokenSource().token);
+    await vi.waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
+    state.settings.set("cruise.endpoint", undefined);
+    fail(new TypeError("fetch failed"));
+    await listing;
+    expect(state.logged.at(-1)?.message).toContain("Could not reach Cruise at https://proxy.example.com/v1");
+  });
+
   it("throws a spending refusal as a plain error whose cause still carries the code", async () => {
     // Budget and credit are different sentences; the code is what tells an
     // extension calling `sendRequest` which one it hit. Review of #356.

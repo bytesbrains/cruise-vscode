@@ -8,12 +8,15 @@ the demo gateway and nothing in the extension moved it back.
 
 - Storing a key now moves the endpoint to the deployment that key belongs to: a
   `cru_live_` / `cru_test_` key goes to production, a `cru_demo_` key goes to the demo. A
-  custom endpoint is never touched.
+  custom endpoint is never touched. The model list waits for both writes, so it never
+  reads the new key against the old endpoint; and **Try the demo** writes the demo endpoint
+  only once a key is entered, so cancelling it no longer leaves a live key on the demo.
 - A rejected key gets a dialog with the details: the endpoint (production, demo or
   custom), the key's kind (prefix only), the gateway's answer, the likely cause (live key on
   demo, demo key on production, a service key, a non-Cruise key, a proxy in the path, or the
   key itself), and buttons to switch the endpoint, change it, replace the key or open the log.
-  The chat panel's error carries the same diagnosis.
+  The chat panel's error carries the same diagnosis, made against the endpoint the request
+  actually went to.
 - New **Cruise: Change endpoint** command (also in the Manage menu): Production, Demo, or a
   custom URL for a proxy or self-hosted gateway. `https://` is required; `http://` only for
   `localhost`.

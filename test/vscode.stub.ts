@@ -213,6 +213,9 @@ export const workspace = {
     update: (key: string, value: unknown, target?: ConfigurationTarget): Promise<void> => {
       state.settings.set(key, value);
       state.updates.push({ key, value, target });
+      // As the editor does: a write is announced, and the extension's own
+      // listener refreshes the model list from it.
+      state.changeConfiguration(key);
       return Promise.resolve();
     },
   }),

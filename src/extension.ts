@@ -92,13 +92,9 @@ async function manage(
     return;
   }
 
-  if (choice.id === "demo") {
-    // Global rather than workspace: a demo endpoint is a property of the
-    // person trying the extension, not of the folder they happen to have open.
-    await setEndpoint(DEMO_ENDPOINT);
-  }
-
-  const key = await promptForKey(context.secrets);
+  // The demo endpoint is written with the key, not before the prompt: a
+  // cancelled prompt must not leave the old key pointed at the demo (#16).
+  const key = await promptForKey(context.secrets, choice.id === "demo" ? { endpoint: DEMO_ENDPOINT } : {});
   if (key === undefined) return;
   refresh();
   await verify(key, log);

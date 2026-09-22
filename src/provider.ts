@@ -15,7 +15,7 @@
 
 import * as vscode from "vscode";
 import { chatModels, type CruiseModel } from "./catalogue.ts";
-import { endpoint, promptForKey, storedKey } from "./credentials.ts";
+import { endpoint, promptForKey, settled, storedKey } from "./credentials.ts";
 import { showCredentialProblem } from "./dialog.ts";
 import { fetchCatalogue, GatewayError, streamCompletion, type ChatRequest } from "./gateway.ts";
 import { estimateTokens, estimateTurnTokens, toChatMessages, type Part, type Turn } from "./messages.ts";
@@ -64,6 +64,8 @@ export class CruiseChatProvider implements vscode.LanguageModelChatProvider<vsco
   ): Promise<vscode.LanguageModelChatInformation[]> {
     // `silent` is the editor enumerating providers in the background. Prompting
     // there would put a modal in front of somebody who never asked for Cruise.
+    // Read only once a key change has moved the endpoint with it (`settled`).
+    await settled();
     let key = await storedKey(this.secrets);
     if (key === undefined) {
       if (options.silent) return [];
@@ -91,7 +93,7 @@ export class CruiseChatProvider implements vscode.LanguageModelChatProvider<vsco
         void showCredentialProblem(error.refusal, key, base, this.log);
         return [];
       }
-      const sentence = sentenceOf(error, key);
+      const sentence = sentenceOf(error, key, base);
       this.log.error(`${base} could not list models: ${sentence}`);
       if (!options.silent) vscode.window.showErrorMessage(sentence);
       return [];
@@ -107,6 +109,7 @@ export class CruiseChatProvider implements vscode.LanguageModelChatProvider<vsco
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     token: vscode.CancellationToken,
   ): Promise<void> {
+    await settled();
     const key = await storedKey(this.secrets);
     if (key === undefined) {
       throw vscode.LanguageModelError.NoPermissions(
@@ -115,11 +118,14 @@ export class CruiseChatProvider implements vscode.LanguageModelChatProvider<vsco
     }
 
     const request = requestFor(model, messages, options);
+    // Captured, not re-read: a refusal is explained against the gateway that
+    // gave it, and the setting may have moved while the request was out.
+    const base = endpoint();
     const abort = new AbortController();
     const cancel = token.onCancellationRequested(() => abort.abort());
 
     try {
-      const body = await streamCompletion(endpoint(), key, request, abort.signal);
+      const body = await streamCompletion(base, key, request, abort.signal);
       for await (const event of readCompletionStream(body)) {
         if (token.isCancellationRequested) break;
         if (event.kind === "text") {
@@ -133,7 +139,7 @@ export class CruiseChatProvider implements vscode.LanguageModelChatProvider<vsco
     } catch (error) {
       // A user pressing stop is not a failure to report.
       if (abort.signal.aborted || token.isCancellationRequested) return;
-      const sentence = sentenceOf(error, key);
+      const sentence = sentenceOf(error, key, base);
       this.log.error(`${model.id}: ${sentence}`);
       // The sentence is for the person in the chat panel. The original is
       // kept as `cause` for the extension that called `sendRequest` and wants
@@ -266,13 +272,13 @@ function plainTextOf(part: unknown): string {
   return "";
 }
 
-/** What to show a person, for anything that can be thrown here. */
-function sentenceOf(error: unknown, key: string): string {
+/** What to show a person, for anything thrown by a request sent to `base`. */
+function sentenceOf(error: unknown, key: string, base: string): string {
   if (error instanceof GatewayError) {
     // A rejected key is explained against the endpoint it was sent to: a
     // correct key on the wrong deployment reads exactly like a bad one (#16).
     return explain(error.refusal).credentials
-      ? diagnose(error.refusal, key, endpoint()).sentence
+      ? diagnose(error.refusal, key, base).sentence
       : explain(error.refusal).message;
   }
   // The gateway was reached and answered; it is the answer that was wrong.
@@ -281,7 +287,7 @@ function sentenceOf(error: unknown, key: string): string {
     // A fetch that never reached the gateway: a wrong endpoint, an offline
     // machine, a proxy. Name the endpoint, because that setting is the thing
     // the user can actually change.
-    return `Could not reach Cruise at ${endpoint()}: ${error.message}`;
+    return `Could not reach Cruise at ${base}: ${error.message}`;
   }
   return String(error);
 }
