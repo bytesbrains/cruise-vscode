@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.7 — 2026-09-22
 
 - The README's Marketplace badge read "retired badge": shields.io has retired its Visual Studio
   Marketplace badges. It now comes from `vsmarketplacebadges.dev`, which `vsce` trusts for SVG.
