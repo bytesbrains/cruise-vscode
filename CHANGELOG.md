@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.6 — unreleased
+## 0.1.6 — 2026-09-22
 
 - Lanes (`bb/agentic-coding`, `bb/extraction`, …) are offered when any of their members can
   stream, or call tools for agent mode. They were being judged by the lane row's summary
