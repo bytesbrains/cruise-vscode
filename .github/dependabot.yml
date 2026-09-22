@@ -16,6 +16,11 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: vitest
         update-types: ["version-update:semver-major"]
+      # The types are the API of the oldest editor supported, so they move with
+      # engines.vscode and never ahead of it — vsce refuses to package when they
+      # do, and anything newer typechecks calls that editor does not have.
+      - dependency-name: "@types/vscode"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: github-actions
     directory: /

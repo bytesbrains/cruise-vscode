@@ -15,7 +15,7 @@
     "url": "https://github.com/bytesbrains/cruise-vscode/issues"
   },
   "engines": {
-    "vscode": "^1.104.0",
+    "vscode": "^1.106.0",
     "node": ">=22"
   },
   "categories": [
@@ -91,7 +91,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.20.4",
-    "@types/vscode": "^1.104.0",
+    "@types/vscode": "1.106.0",
     "@vscode/vsce": "^4.0.0",
     "esbuild": "^0.28.2",
     "ovsx": "^1.1.1",
