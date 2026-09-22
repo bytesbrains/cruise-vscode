@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.6 — unreleased
+
+- Lanes (`bb/agentic-coding`, `bb/extraction`, …) are offered when any of their members can
+  stream, or call tools for agent mode. They were being judged by the lane row's summary
+  instead, which is true only when *every* member has the capability measured, so a single
+  unmeasured member hid a lane the gateway would have served. The gateway picks a member that
+  can handle each request, so that is the test that matters.
+- The **BytesBrains Cruise** output channel says why each row the gateway listed is not in
+  the picker (`not in the picker: <id> — <reason>`).
+
 ## 0.1.5 — 2026-09-22
 
 Fixes [#16](https://github.com/bytesbrains/cruise-vscode/issues/16): after **Try the demo**,
