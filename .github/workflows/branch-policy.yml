@@ -1,0 +1,39 @@
+# `main` takes one kind of pull request: a release, from `dev`. Features,
+# fixes and dependency bumps go to `dev`, and reach `main` together when a
+# release is cut (CONTRIBUTING.md → Releasing).
+#
+# GitHub's branch rules cannot name the branch a pull request comes *from*, so
+# this check does, and the `main` ruleset requires it. It runs on every pull
+# request so the check always reports — a required check that never runs
+# would leave a pull request waiting forever.
+name: branch-policy
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited]
+
+permissions: {}
+
+jobs:
+  source-branch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Only dev may be merged into main
+        env:
+          BASE: ${{ github.base_ref }}
+          HEAD: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ "$BASE" != "main" ]; then
+            echo "Into $BASE — no source restriction."
+            exit 0
+          fi
+          if [ "$HEAD" = "dev" ] && [ "$HEAD_REPO" = "$REPO" ]; then
+            echo "dev → main: a release."
+            exit 0
+          fi
+          echo "::error::main only takes pull requests from dev (this one is from $HEAD_REPO:$HEAD). Retarget it to dev: Edit → base: dev."
+          exit 1
