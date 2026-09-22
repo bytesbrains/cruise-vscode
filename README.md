@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://marketplace.visualstudio.com/items?itemName=BytesBrains.bytesbrains-cruise"><img src="https://img.shields.io/visual-studio-marketplace/v/BytesBrains.bytesbrains-cruise?label=Marketplace&amp;color=0078D4" alt="Visual Studio Marketplace" /></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=BytesBrains.bytesbrains-cruise"><img src="https://vsmarketplacebadges.dev/version-short/BytesBrains.bytesbrains-cruise.svg?label=Marketplace&amp;color=0078D4&amp;style=flat" alt="Visual Studio Marketplace" /></a>
   <a href="https://open-vsx.org/extension/bytesbrains/bytesbrains-cruise"><img src="https://img.shields.io/open-vsx/v/bytesbrains/bytesbrains-cruise?label=Open%20VSX&amp;color=C160EF" alt="Open VSX" /></a>
   <a href="https://bytesbrains.com/cruise"><img src="https://img.shields.io/badge/Product-bytesbrains.com%2Fcruise-111111" alt="Product" /></a>
 </p>
