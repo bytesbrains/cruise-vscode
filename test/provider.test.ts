@@ -264,7 +264,7 @@ describe("the response that comes back", () => {
     const { provider: p, secrets } = provider();
     await secrets.store("cruise.apiKey", "k");
     await responseOf(p, [userTurn(new vscode.LanguageModelTextPart("hi"))]).run;
-    const init = fake.mock.calls[0][1] as RequestInit;
+    const init = (fake.mock.calls[0] as [string, RequestInit])[1];
     const sentHeaders = init.headers as Record<string, string>;
     expect(sentHeaders["x-cruise-compress"]).toBeUndefined();
   });
@@ -275,7 +275,7 @@ describe("the response that comes back", () => {
     await secrets.store("cruise.apiKey", "k");
     state.settings.set("cruise.compression", "off");
     await responseOf(p, [userTurn(new vscode.LanguageModelTextPart("hi"))]).run;
-    const init = fake.mock.calls[0][1] as RequestInit;
+    const init = (fake.mock.calls[0] as [string, RequestInit])[1];
     const sentHeaders = init.headers as Record<string, string>;
     expect(sentHeaders["x-cruise-compress"]).toBe("off");
   });
@@ -293,8 +293,8 @@ describe("the response that comes back", () => {
     );
     const statusBar = vscode.window.createStatusBarItem();
     const secrets = new MemorySecrets();
-    const log = vscode.window.createOutputChannel("test");
-    const p = new CruiseChatProvider(secrets, log, statusBar as unknown as vscode.StatusBarItem);
+    const log = vscode.window.createOutputChannel("test", { log: true });
+    const p = new CruiseChatProvider(secrets, log, statusBar);
     await secrets.store("cruise.apiKey", "k");
     await responseOf(p, [userTurn(new vscode.LanguageModelTextPart("hi"))]).run;
 
@@ -302,7 +302,9 @@ describe("the response that comes back", () => {
       level: "info",
       message: "bb/extraction: request compression: tool outputs compressed (18.2 KB → 6.1 KB)",
     });
-    expect(statusBar.visible).toBe(true);
+    const tracked = state.statusBarItems.find((item) => item.text.includes("compressed"));
+    expect(tracked).toBeDefined();
+    expect(tracked?.visible).toBe(true);
     expect(statusBar.text).toBe("$(archive) compressed 18.2 KB → 6.1 KB");
     expect(statusBar.tooltip).toContain("18.2 KB → 6.1 KB");
   });
