@@ -347,4 +347,36 @@ describe("Cruise: Toggle request compression", () => {
       target: vscode.ConfigurationTarget.Global,
     });
   });
+
+  it("turning back to auto from the manage menu clears the off indicator", async () => {
+    const ctx = context();
+    activate(ctx as unknown as vscode.ExtensionContext);
+    const statusBar = state.statusBarItems.find((item) => item.id === "cruise.compressionStatus")!;
+    await run("cruise.toggleCompression");
+    expect(statusBar.visible).toBe(true);
+    state.quickPick = "compression";
+    await runManage();
+    expect(state.settings.get("cruise.compression")).toBe("auto");
+    expect(statusBar.visible).toBe(false);
+  });
+
+  it("shows an opt-out persisted from an earlier session on activation", () => {
+    state.settings.set("cruise.compression", "off");
+    activate(context() as unknown as vscode.ExtensionContext);
+    const statusBar = state.statusBarItems.find((item) => item.id === "cruise.compressionStatus")!;
+    expect(statusBar.visible).toBe(true);
+    expect(statusBar.text).toBe("$(archive) compression: off");
+  });
+
+  it("writes to the workspace when the workspace is what sets it", async () => {
+    state.workspaceSettings.set("cruise.compression", "off");
+    activate(context() as unknown as vscode.ExtensionContext);
+    await run("cruise.toggleCompression");
+    // Global "auto" beneath a workspace "off" would change nothing.
+    expect(state.updates).toEqual([
+      { key: "cruise.compression", value: "auto", target: vscode.ConfigurationTarget.Workspace },
+    ]);
+    expect(vscode.workspace.getConfiguration().get("cruise.compression")).toBe("auto");
+    expect(state.shown).toContainEqual({ level: "info", message: expect.stringContaining("for this workspace") });
+  });
 });

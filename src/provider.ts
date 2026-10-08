@@ -17,7 +17,7 @@ import * as vscode from "vscode";
 import { chatModels, type CruiseModel } from "./catalogue.ts";
 import { explainCompression, parseCompressHeader } from "./compression.ts";
 import { endpoint, promptForKey, settled, storedKey } from "./credentials.ts";
-import { showCredentialProblem } from "./dialog.ts";
+import { COMPRESSION_SETTING, showCompressionSetting, showCredentialProblem } from "./dialog.ts";
 import { fetchCatalogue, GatewayError, streamCompletion, type ChatRequest } from "./gateway.ts";
 import { estimateTokens, estimateTurnTokens, toChatMessages, type Part, type Turn } from "./messages.ts";
 import { diagnose } from "./pairing.ts";
@@ -25,7 +25,6 @@ import { explain } from "./refusal.ts";
 import { NotAStreamError, readCompletionStream } from "./stream.ts";
 
 const OUTPUT_SETTING = "cruise.maxOutputTokens";
-const COMPRESSION_SETTING = "cruise.compression";
 
 /**
  * What a request is bounded at when the caller states nothing.
@@ -150,7 +149,9 @@ export class CruiseChatProvider implements vscode.LanguageModelChatProvider<vsco
             this.statusBar.tooltip = explanation.statusBarTooltip ?? undefined;
             this.statusBar.show();
           } else {
-            this.statusBar.hide();
+            // No saving to report — but an opt-out stays visible, including
+            // through the gateway's `off reason=header` echo of it.
+            showCompressionSetting(this.statusBar);
           }
         }
       }

@@ -167,6 +167,8 @@ export class MemorySecrets {
 export const state = {
   /** Settings, keyed by the dotted name. `undefined` is unset. */
   settings: new Map<string, unknown>(),
+  /** Workspace settings, which outrank `settings` as the editor's do. */
+  workspaceSettings: new Map<string, unknown>(),
   /** Where each `update` went, so a test can assert Global rather than Workspace. */
   updates: [] as { key: string; value: unknown; target: ConfigurationTarget | undefined }[],
   /** What the next `showInputBox` resolves to. `undefined` is the user cancelling. */
@@ -193,6 +195,7 @@ export const state = {
 
   reset(): void {
     this.settings.clear();
+    this.workspaceSettings.clear();
     this.updates = [];
     this.inputBox = undefined;
     this.quickPick = undefined;
@@ -217,9 +220,15 @@ export const state = {
 
 export const workspace = {
   getConfiguration: () => ({
-    get: <T>(key: string): T | undefined => state.settings.get(key) as T | undefined,
+    get: <T>(key: string): T | undefined =>
+      (state.workspaceSettings.has(key) ? state.workspaceSettings.get(key) : state.settings.get(key)) as T | undefined,
+    inspect: <T>(key: string) => ({
+      key,
+      globalValue: state.settings.get(key) as T | undefined,
+      workspaceValue: state.workspaceSettings.get(key) as T | undefined,
+    }),
     update: (key: string, value: unknown, target?: ConfigurationTarget): Promise<void> => {
-      state.settings.set(key, value);
+      (target === ConfigurationTarget.Workspace ? state.workspaceSettings : state.settings).set(key, value);
       state.updates.push({ key, value, target });
       // As the editor does: a write is announced, and the extension's own
       // listener refreshes the model list from it.

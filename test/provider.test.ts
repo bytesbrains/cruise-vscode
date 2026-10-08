@@ -308,6 +308,26 @@ describe("the response that comes back", () => {
     expect(statusBar.text).toBe("$(archive) compressed 18.2 KB → 6.1 KB");
     expect(statusBar.tooltip).toContain("18.2 KB → 6.1 KB");
   });
+
+  it("keeps the off indicator when the gateway echoes the opt-out", async () => {
+    const text = `data: ${JSON.stringify({ choices: [{ delta: { content: "ok" } }] })}\n\ndata: [DONE]\n\n`;
+    stub(
+      new Response(text, {
+        status: 200,
+        headers: { "content-type": "text/event-stream", "x-cruise-compress": "off reason=header" },
+      }),
+    );
+    state.settings.set("cruise.compression", "off");
+    const statusBar = vscode.window.createStatusBarItem();
+    const secrets = new MemorySecrets();
+    const p = new CruiseChatProvider(secrets, vscode.window.createOutputChannel("test", { log: true }), statusBar);
+    await secrets.store("cruise.apiKey", "k");
+    await responseOf(p, [userTurn(new vscode.LanguageModelTextPart("hi"))]).run;
+
+    const tracked = state.statusBarItems.at(-1)!;
+    expect(tracked.visible).toBe(true);
+    expect(tracked.text).toBe("$(archive) compression: off");
+  });
 });
 
 describe("counting tokens", () => {
