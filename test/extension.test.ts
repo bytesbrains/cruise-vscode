@@ -52,8 +52,9 @@ describe("activate", () => {
     expect(state.providers.has("cruise")).toBe(true);
     expect(state.commands.has("cruise.manageKey")).toBe(true);
     expect(state.commands.has("cruise.changeEndpoint")).toBe(true);
-    // The log, the provider, the registration, two commands, two listeners.
-    expect(ctx.subscriptions).toHaveLength(7);
+    expect(state.commands.has("cruise.toggleCompression")).toBe(true);
+    // The log, status bar, provider, registration, three commands, two listeners.
+    expect(ctx.subscriptions).toHaveLength(9);
     deactivate();
     for (const disposable of ctx.subscriptions) disposable.dispose();
     expect(state.providers.has("cruise")).toBe(false);
@@ -297,5 +298,85 @@ describe("Cruise: Change endpoint", () => {
     await runChangeEndpoint();
     expect(state.updates).toEqual([]);
     expect(state.shown).toEqual([]);
+  });
+});
+
+describe("Cruise: Toggle request compression", () => {
+  it("toggles between auto and off, updating setting and status bar", async () => {
+    const ctx = context();
+    activate(ctx as unknown as vscode.ExtensionContext);
+    const statusBar = state.statusBarItems.find((item) => item.id === "cruise.compressionStatus")!;
+    expect(statusBar).toBeDefined();
+
+    // First toggle: auto -> off
+    await run("cruise.toggleCompression");
+    expect(state.updates).toContainEqual({
+      key: "cruise.compression",
+      value: "off",
+      target: vscode.ConfigurationTarget.Global,
+    });
+    expect(statusBar.visible).toBe(true);
+    expect(statusBar.text).toBe("$(archive) compression: off");
+    expect(state.shown).toContainEqual({
+      level: "info",
+      message: expect.stringContaining("opted out"),
+    });
+
+    // Second toggle: off -> auto
+    await run("cruise.toggleCompression");
+    expect(state.updates).toContainEqual({
+      key: "cruise.compression",
+      value: "auto",
+      target: vscode.ConfigurationTarget.Global,
+    });
+    expect(statusBar.visible).toBe(false);
+    expect(state.shown).toContainEqual({
+      level: "info",
+      message: expect.stringContaining("set to auto"),
+    });
+  });
+
+  it("is reachable from the manage menu", async () => {
+    const ctx = context();
+    activate(ctx as unknown as vscode.ExtensionContext);
+    state.quickPick = "compression";
+    await runManage();
+    expect(state.updates).toContainEqual({
+      key: "cruise.compression",
+      value: "off",
+      target: vscode.ConfigurationTarget.Global,
+    });
+  });
+
+  it("turning back to auto from the manage menu clears the off indicator", async () => {
+    const ctx = context();
+    activate(ctx as unknown as vscode.ExtensionContext);
+    const statusBar = state.statusBarItems.find((item) => item.id === "cruise.compressionStatus")!;
+    await run("cruise.toggleCompression");
+    expect(statusBar.visible).toBe(true);
+    state.quickPick = "compression";
+    await runManage();
+    expect(state.settings.get("cruise.compression")).toBe("auto");
+    expect(statusBar.visible).toBe(false);
+  });
+
+  it("shows an opt-out persisted from an earlier session on activation", () => {
+    state.settings.set("cruise.compression", "off");
+    activate(context() as unknown as vscode.ExtensionContext);
+    const statusBar = state.statusBarItems.find((item) => item.id === "cruise.compressionStatus")!;
+    expect(statusBar.visible).toBe(true);
+    expect(statusBar.text).toBe("$(archive) compression: off");
+  });
+
+  it("writes to the workspace when the workspace is what sets it", async () => {
+    state.workspaceSettings.set("cruise.compression", "off");
+    activate(context() as unknown as vscode.ExtensionContext);
+    await run("cruise.toggleCompression");
+    // Global "auto" beneath a workspace "off" would change nothing.
+    expect(state.updates).toEqual([
+      { key: "cruise.compression", value: "auto", target: vscode.ConfigurationTarget.Workspace },
+    ]);
+    expect(vscode.workspace.getConfiguration().get("cruise.compression")).toBe("auto");
+    expect(state.shown).toContainEqual({ level: "info", message: expect.stringContaining("for this workspace") });
   });
 });

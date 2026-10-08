@@ -56,11 +56,30 @@
         "command": "cruise.changeEndpoint",
         "title": "Change endpoint",
         "category": "Cruise"
+      },
+      {
+        "command": "cruise.toggleCompression",
+        "title": "Toggle request compression",
+        "category": "Cruise"
       }
     ],
     "configuration": {
       "title": "BytesBrains Cruise",
       "properties": {
+        "cruise.compression": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "off"
+          ],
+          "enumDescriptions": [
+            "Honor the project's compression setting on the gateway (default). Tool outputs in agent turns may be losslessly or compactly rewritten by Cruise.",
+            "Opt out of gateway request compression by sending `x-cruise-compress: off` on every request. For sessions where full uncompressed tool output matters (e.g. log inspection)."
+          ],
+          "default": "auto",
+          "markdownDescription": "Whether to allow the Cruise gateway to compress `role: \"tool\"` outputs before forwarding to upstream providers. `auto` follows the project's configuration on the gateway. `off` sends `x-cruise-compress: off` with every request to opt out.",
+          "scope": "machine-overridable"
+        },
         "cruise.endpoint": {
           "type": "string",
           "default": "https://cruise.bytesbrains.net/v1",

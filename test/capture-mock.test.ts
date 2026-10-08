@@ -64,7 +64,7 @@ describe("the capture's mock gateway", () => {
   });
 
   it("streams a reply the extension's reader turns into text and usage", async () => {
-    const body = await streamCompletion(
+    const { body } = await streamCompletion(
       at("demo"),
       "cru_demo_x",
       { model: "bb/agentic-coding", messages: [], stream: true, stream_options: { include_usage: true } },

@@ -20,6 +20,25 @@ import type { Refusal } from "./refusal.ts";
 
 export const MANAGE_COMMAND = "cruise.manageKey";
 export const ENDPOINT_COMMAND = "cruise.changeEndpoint";
+export const TOGGLE_COMPRESSION_COMMAND = "cruise.toggleCompression";
+export const COMPRESSION_SETTING = "cruise.compression";
+
+/**
+ * The status bar as the setting alone dictates it: an opt-out is shown for as
+ * long as it holds, `auto` shows nothing until a response reports a saving.
+ * One function, so activation, a settings change and a response that carries
+ * no saving (the gateway's `off reason=header` to our own opt-out) cannot
+ * disagree about what `off` looks like.
+ */
+export function showCompressionSetting(statusBar: vscode.StatusBarItem): void {
+  if (vscode.workspace.getConfiguration().get<string>(COMPRESSION_SETTING) === "off") {
+    statusBar.text = "$(archive) compression: off";
+    statusBar.tooltip = "Cruise request compression is opted out (x-cruise-compress: off). Click to toggle.";
+    statusBar.show();
+  } else {
+    statusBar.hide();
+  }
+}
 
 /**
  * Show the refusal, act on the button pressed, and report whether the

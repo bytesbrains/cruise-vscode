@@ -97,6 +97,12 @@ export interface ChatRequest {
   [option: string]: unknown;
 }
 
+/** What `streamCompletion` yields back to the caller. */
+export interface StreamCompletionResult {
+  readonly body: ReadableStream<Uint8Array>;
+  readonly headers: Headers;
+}
+
 /**
  * `POST /v1/chat/completions`, streaming.
  *
@@ -108,10 +114,11 @@ export async function streamCompletion(
   key: string,
   request: ChatRequest,
   signal: AbortSignal,
-): Promise<ReadableStream<Uint8Array>> {
+  extraHeaders: Record<string, string> = {},
+): Promise<StreamCompletionResult> {
   const response = await fetch(`${normaliseEndpoint(endpoint)}/chat/completions`, {
     method: "POST",
-    headers: headers(key),
+    headers: { ...headers(key), ...extraHeaders },
     body: JSON.stringify(request),
     signal,
   });
@@ -124,5 +131,5 @@ export async function streamCompletion(
       retryAfter: null,
     });
   }
-  return response.body;
+  return { body: response.body, headers: response.headers };
 }
