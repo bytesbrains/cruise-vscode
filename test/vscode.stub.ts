@@ -79,6 +79,11 @@ export enum LanguageModelChatToolMode {
   Required = 2,
 }
 
+export enum StatusBarAlignment {
+  Left = 1,
+  Right = 2,
+}
+
 export enum ConfigurationTarget {
   Global = 1,
   Workspace = 2,
@@ -178,6 +183,8 @@ export const state = {
   logShown: 0,
   /** Every line logged to the output channel. */
   logged: [] as { level: string; message: string }[],
+  /** Status bar items created. */
+  statusBarItems: [] as { id: string; text: string; tooltip?: string | undefined; command?: string | undefined; visible: boolean }[],
   /** Providers registered, by vendor. */
   providers: new Map<string, unknown>(),
   /** Commands registered, by id. */
@@ -194,6 +201,7 @@ export const state = {
     this.executed = [];
     this.logShown = 0;
     this.logged = [];
+    this.statusBarItems = [];
     this.providers.clear();
     this.commands.clear();
     this.configurationListeners = [];
@@ -254,6 +262,24 @@ export const window = {
       state.logged.push({ level, message: message ?? "" });
     };
     return { info: line("info"), warn: line("warn"), error: line("error"), debug: line("debug"), trace: line("trace"), appendLine: line("append"), show: () => { state.logShown++; }, dispose: () => undefined };
+  },
+  createStatusBarItem: (idOrAlignment?: string | number, _alignmentOrPriority?: number, _priority?: number) => {
+    const item = {
+      id: typeof idOrAlignment === "string" ? idOrAlignment : "status-bar-item",
+      text: "",
+      tooltip: undefined as string | undefined,
+      command: undefined as string | undefined,
+      visible: false,
+      show: () => { item.visible = true; },
+      hide: () => { item.visible = false; },
+      dispose: () => {
+        item.visible = false;
+        const index = state.statusBarItems.indexOf(item);
+        if (index !== -1) state.statusBarItems.splice(index, 1);
+      },
+    };
+    state.statusBarItems.push(item);
+    return item;
   },
 };
 

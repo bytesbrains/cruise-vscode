@@ -258,6 +258,54 @@ describe("the response that comes back", () => {
     token.cancel();
     await expect(run).resolves.toBeUndefined();
   });
+
+  it("does not send x-cruise-compress header when cruise.compression is auto", async () => {
+    const fake = stub(sse());
+    const { provider: p, secrets } = provider();
+    await secrets.store("cruise.apiKey", "k");
+    await responseOf(p, [userTurn(new vscode.LanguageModelTextPart("hi"))]).run;
+    const init = fake.mock.calls[0][1] as RequestInit;
+    const sentHeaders = init.headers as Record<string, string>;
+    expect(sentHeaders["x-cruise-compress"]).toBeUndefined();
+  });
+
+  it("sends x-cruise-compress: off when cruise.compression is off", async () => {
+    const fake = stub(sse());
+    const { provider: p, secrets } = provider();
+    await secrets.store("cruise.apiKey", "k");
+    state.settings.set("cruise.compression", "off");
+    await responseOf(p, [userTurn(new vscode.LanguageModelTextPart("hi"))]).run;
+    const init = fake.mock.calls[0][1] as RequestInit;
+    const sentHeaders = init.headers as Record<string, string>;
+    expect(sentHeaders["x-cruise-compress"]).toBe("off");
+  });
+
+  it("logs and displays compression savings in status bar when header is applied", async () => {
+    const text = [...[{ choices: [{ delta: { content: "ok" } }] }].map((payload) => `data: ${JSON.stringify(payload)}\n\n`), "data: [DONE]\n\n"].join("");
+    stub(
+      new Response(text, {
+        status: 200,
+        headers: {
+          "content-type": "text/event-stream",
+          "x-cruise-compress": "applied v=1 before=18200 after=6100",
+        },
+      }),
+    );
+    const statusBar = vscode.window.createStatusBarItem();
+    const secrets = new MemorySecrets();
+    const log = vscode.window.createOutputChannel("test");
+    const p = new CruiseChatProvider(secrets, log, statusBar as unknown as vscode.StatusBarItem);
+    await secrets.store("cruise.apiKey", "k");
+    await responseOf(p, [userTurn(new vscode.LanguageModelTextPart("hi"))]).run;
+
+    expect(state.logged).toContainEqual({
+      level: "info",
+      message: "bb/extraction: request compression: tool outputs compressed (18.2 KB → 6.1 KB)",
+    });
+    expect(statusBar.visible).toBe(true);
+    expect(statusBar.text).toBe("$(archive) compressed 18.2 KB → 6.1 KB");
+    expect(statusBar.tooltip).toContain("18.2 KB → 6.1 KB");
+  });
 });
 
 describe("counting tokens", () => {

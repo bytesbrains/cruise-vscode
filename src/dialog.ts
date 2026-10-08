@@ -20,6 +20,7 @@ import type { Refusal } from "./refusal.ts";
 
 export const MANAGE_COMMAND = "cruise.manageKey";
 export const ENDPOINT_COMMAND = "cruise.changeEndpoint";
+export const TOGGLE_COMPRESSION_COMMAND = "cruise.toggleCompression";
 
 /**
  * Show the refusal, act on the button pressed, and report whether the

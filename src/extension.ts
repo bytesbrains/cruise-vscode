@@ -15,7 +15,7 @@
 import * as vscode from "vscode";
 import { chatModels } from "./catalogue.ts";
 import { DEMO_ENDPOINT, endpoint, forgetKey, promptForKey, setEndpoint, storedKey } from "./credentials.ts";
-import { ENDPOINT_COMMAND, MANAGE_COMMAND, showCredentialProblem } from "./dialog.ts";
+import { ENDPOINT_COMMAND, MANAGE_COMMAND, showCredentialProblem, TOGGLE_COMPRESSION_COMMAND } from "./dialog.ts";
 import { fetchCatalogue, GatewayError } from "./gateway.ts";
 import { endpointKind, endpointProblem, PRODUCTION_ENDPOINT } from "./pairing.ts";
 import { CruiseChatProvider } from "./provider.ts";
@@ -23,18 +23,29 @@ import { explain } from "./refusal.ts";
 
 const VENDOR = "cruise";
 const ENDPOINT_SETTING = "cruise.endpoint";
+const COMPRESSION_SETTING = "cruise.compression";
 
 export function activate(context: vscode.ExtensionContext): void {
   const log = vscode.window.createOutputChannel("BytesBrains Cruise", { log: true });
   context.subscriptions.push(log);
 
-  const provider = new CruiseChatProvider(context.secrets, log);
+  const statusBar = vscode.window.createStatusBarItem(
+    "cruise.compressionStatus",
+    vscode.StatusBarAlignment.Right,
+    100,
+  );
+  statusBar.name = "Cruise Request Compression";
+  statusBar.command = TOGGLE_COMPRESSION_COMMAND;
+  context.subscriptions.push(statusBar);
+
+  const provider = new CruiseChatProvider(context.secrets, log, statusBar);
   context.subscriptions.push(provider);
   context.subscriptions.push(vscode.lm.registerLanguageModelChatProvider(VENDOR, provider));
 
   context.subscriptions.push(
     vscode.commands.registerCommand(MANAGE_COMMAND, () => manage(context, log, () => provider.refresh())),
     vscode.commands.registerCommand(ENDPOINT_COMMAND, () => changeEndpoint(context, log)),
+    vscode.commands.registerCommand(TOGGLE_COMPRESSION_COMMAND, () => toggleCompression(statusBar)),
   );
 
   // The catalogue is a property of the key and the endpoint, both of which the
@@ -45,12 +56,51 @@ export function activate(context: vscode.ExtensionContext): void {
   }));
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
     if (event.affectsConfiguration(ENDPOINT_SETTING)) provider.refresh();
+    if (event.affectsConfiguration(COMPRESSION_SETTING)) {
+      updateStatusBarOnConfigChange(statusBar);
+    }
   }));
 }
 
 export function deactivate(): void {
   // Nothing to unwind: every disposable is on the context's subscriptions, and
   // the key lives in the editor's keychain rather than in this process.
+}
+
+/** If compression was manually turned off, reflect or hide status bar. */
+function updateStatusBarOnConfigChange(statusBar: vscode.StatusBarItem): void {
+  const setting = vscode.workspace.getConfiguration().get<string>(COMPRESSION_SETTING);
+  if (setting === "off") {
+    statusBar.text = "$(archive) compression: off";
+    statusBar.tooltip = "Cruise request compression is opted out (x-cruise-compress: off). Click to toggle.";
+    statusBar.show();
+  }
+}
+
+/**
+ * Toggle request compression between 'auto' and 'off'.
+ */
+async function toggleCompression(statusBar?: vscode.StatusBarItem): Promise<void> {
+  const current = vscode.workspace.getConfiguration().get<string>(COMPRESSION_SETTING) ?? "auto";
+  const next = current === "off" ? "auto" : "off";
+  await vscode.workspace.getConfiguration().update(COMPRESSION_SETTING, next, vscode.ConfigurationTarget.Global);
+  if (next === "off") {
+    vscode.window.showInformationMessage(
+      "Cruise request compression opted out (x-cruise-compress: off). Full tool outputs will be sent upstream.",
+    );
+    if (statusBar !== undefined) {
+      statusBar.text = "$(archive) compression: off";
+      statusBar.tooltip = "Cruise request compression is opted out (x-cruise-compress: off). Click to toggle.";
+      statusBar.show();
+    }
+  } else {
+    vscode.window.showInformationMessage(
+      "Cruise request compression set to auto. Follows the project's gateway configuration.",
+    );
+    if (statusBar !== undefined) {
+      statusBar.hide();
+    }
+  }
 }
 
 /**
@@ -68,12 +118,18 @@ async function manage(
   refresh: () => void,
 ): Promise<void> {
   const existing = await storedKey(context.secrets);
+  const compressionState = vscode.workspace.getConfiguration().get<string>(COMPRESSION_SETTING) ?? "auto";
 
   const choice = await vscode.window.showQuickPick(
     [
       { label: existing === undefined ? "Sign in with an API key" : "Replace the stored key", id: "set" },
       { label: "Try the demo", detail: `Point the endpoint at ${DEMO_ENDPOINT} and use a cru_demo_ key`, id: "demo" },
       { label: "Change endpoint", detail: `Now ${endpoint()} — production, the demo, or a proxy / custom URL`, id: "endpoint" },
+      {
+        label: compressionState === "off" ? "Enable request compression (auto)" : "Opt out of request compression (off)",
+        detail: `Currently ${compressionState}. Opting out sends x-cruise-compress: off`,
+        id: "compression",
+      },
       ...(existing === undefined ? [] : [{ label: "Sign out", detail: "Remove the key from this machine", id: "clear" }]),
     ],
     { title: `BytesBrains Cruise — ${endpoint()}`, placeHolder: "What would you like to do?" },
@@ -89,6 +145,11 @@ async function manage(
 
   if (choice.id === "endpoint") {
     await changeEndpoint(context, log);
+    return;
+  }
+
+  if (choice.id === "compression") {
+    await toggleCompression();
     return;
   }
 

@@ -52,8 +52,9 @@ describe("activate", () => {
     expect(state.providers.has("cruise")).toBe(true);
     expect(state.commands.has("cruise.manageKey")).toBe(true);
     expect(state.commands.has("cruise.changeEndpoint")).toBe(true);
-    // The log, the provider, the registration, two commands, two listeners.
-    expect(ctx.subscriptions).toHaveLength(7);
+    expect(state.commands.has("cruise.toggleCompression")).toBe(true);
+    // The log, status bar, provider, registration, three commands, two listeners.
+    expect(ctx.subscriptions).toHaveLength(9);
     deactivate();
     for (const disposable of ctx.subscriptions) disposable.dispose();
     expect(state.providers.has("cruise")).toBe(false);
@@ -297,5 +298,53 @@ describe("Cruise: Change endpoint", () => {
     await runChangeEndpoint();
     expect(state.updates).toEqual([]);
     expect(state.shown).toEqual([]);
+  });
+});
+
+describe("Cruise: Toggle request compression", () => {
+  it("toggles between auto and off, updating setting and status bar", async () => {
+    const ctx = context();
+    activate(ctx as unknown as vscode.ExtensionContext);
+    const statusBar = state.statusBarItems.find((item) => item.id === "cruise.compressionStatus")!;
+    expect(statusBar).toBeDefined();
+
+    // First toggle: auto -> off
+    await run("cruise.toggleCompression");
+    expect(state.updates).toContainEqual({
+      key: "cruise.compression",
+      value: "off",
+      target: vscode.ConfigurationTarget.Global,
+    });
+    expect(statusBar.visible).toBe(true);
+    expect(statusBar.text).toBe("$(archive) compression: off");
+    expect(state.shown).toContainEqual({
+      level: "info",
+      message: expect.stringContaining("opted out"),
+    });
+
+    // Second toggle: off -> auto
+    await run("cruise.toggleCompression");
+    expect(state.updates).toContainEqual({
+      key: "cruise.compression",
+      value: "auto",
+      target: vscode.ConfigurationTarget.Global,
+    });
+    expect(statusBar.visible).toBe(false);
+    expect(state.shown).toContainEqual({
+      level: "info",
+      message: expect.stringContaining("set to auto"),
+    });
+  });
+
+  it("is reachable from the manage menu", async () => {
+    const ctx = context();
+    activate(ctx as unknown as vscode.ExtensionContext);
+    state.quickPick = "compression";
+    await runManage();
+    expect(state.updates).toContainEqual({
+      key: "cruise.compression",
+      value: "off",
+      target: vscode.ConfigurationTarget.Global,
+    });
   });
 });
