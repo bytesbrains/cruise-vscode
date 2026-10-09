@@ -79,6 +79,11 @@ export enum LanguageModelChatToolMode {
   Required = 2,
 }
 
+export enum StatusBarAlignment {
+  Left = 1,
+  Right = 2,
+}
+
 export enum ConfigurationTarget {
   Global = 1,
   Workspace = 2,
@@ -162,6 +167,8 @@ export class MemorySecrets {
 export const state = {
   /** Settings, keyed by the dotted name. `undefined` is unset. */
   settings: new Map<string, unknown>(),
+  /** Workspace settings, which outrank `settings` as the editor's do. */
+  workspaceSettings: new Map<string, unknown>(),
   /** Where each `update` went, so a test can assert Global rather than Workspace. */
   updates: [] as { key: string; value: unknown; target: ConfigurationTarget | undefined }[],
   /** What the next `showInputBox` resolves to. `undefined` is the user cancelling. */
@@ -178,6 +185,8 @@ export const state = {
   logShown: 0,
   /** Every line logged to the output channel. */
   logged: [] as { level: string; message: string }[],
+  /** Status bar items created. */
+  statusBarItems: [] as { id: string; text: string; tooltip?: string | undefined; command?: string | undefined; visible: boolean }[],
   /** Providers registered, by vendor. */
   providers: new Map<string, unknown>(),
   /** Commands registered, by id. */
@@ -186,6 +195,7 @@ export const state = {
 
   reset(): void {
     this.settings.clear();
+    this.workspaceSettings.clear();
     this.updates = [];
     this.inputBox = undefined;
     this.quickPick = undefined;
@@ -194,6 +204,7 @@ export const state = {
     this.executed = [];
     this.logShown = 0;
     this.logged = [];
+    this.statusBarItems = [];
     this.providers.clear();
     this.commands.clear();
     this.configurationListeners = [];
@@ -209,9 +220,15 @@ export const state = {
 
 export const workspace = {
   getConfiguration: () => ({
-    get: <T>(key: string): T | undefined => state.settings.get(key) as T | undefined,
+    get: <T>(key: string): T | undefined =>
+      (state.workspaceSettings.has(key) ? state.workspaceSettings.get(key) : state.settings.get(key)) as T | undefined,
+    inspect: <T>(key: string) => ({
+      key,
+      globalValue: state.settings.get(key) as T | undefined,
+      workspaceValue: state.workspaceSettings.get(key) as T | undefined,
+    }),
     update: (key: string, value: unknown, target?: ConfigurationTarget): Promise<void> => {
-      state.settings.set(key, value);
+      (target === ConfigurationTarget.Workspace ? state.workspaceSettings : state.settings).set(key, value);
       state.updates.push({ key, value, target });
       // As the editor does: a write is announced, and the extension's own
       // listener refreshes the model list from it.
@@ -254,6 +271,24 @@ export const window = {
       state.logged.push({ level, message: message ?? "" });
     };
     return { info: line("info"), warn: line("warn"), error: line("error"), debug: line("debug"), trace: line("trace"), appendLine: line("append"), show: () => { state.logShown++; }, dispose: () => undefined };
+  },
+  createStatusBarItem: (idOrAlignment?: string | number, _alignmentOrPriority?: number, _priority?: number) => {
+    const item = {
+      id: typeof idOrAlignment === "string" ? idOrAlignment : "status-bar-item",
+      text: "",
+      tooltip: undefined as string | undefined,
+      command: undefined as string | undefined,
+      visible: false,
+      show: () => { item.visible = true; },
+      hide: () => { item.visible = false; },
+      dispose: () => {
+        item.visible = false;
+        const index = state.statusBarItems.indexOf(item);
+        if (index !== -1) state.statusBarItems.splice(index, 1);
+      },
+    };
+    state.statusBarItems.push(item);
+    return item;
   },
 };
 

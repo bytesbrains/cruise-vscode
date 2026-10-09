@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.8 — 2026-10-08
+
+- Cruise can compress tool outputs on the gateway before a request reaches the upstream
+  provider. The extension now shows this in the status bar: it says when a turn's tool outputs
+  were compressed and by how much (`compressed 18.2 KB → 6.1 KB`). The **BytesBrains Cruise**
+  output channel logs the result for every request.
+- A new `cruise.compression` setting, `auto` (default) or `off`, turns compression off for your
+  requests by sending `x-cruise-compress: off`. Use `off` when the full, uncompressed tool
+  output matters, for example when reading logs. Change it with **Cruise: Toggle request
+  compression**, from the manage menu, or by clicking the status bar. The status bar shows
+  `compression: off` for as long as compression is turned off.
+
 ## 0.1.7 — 2026-09-22
 
 - The README's Marketplace badge read "retired badge": shields.io has retired its Visual Studio

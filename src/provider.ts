@@ -15,8 +15,9 @@
 
 import * as vscode from "vscode";
 import { chatModels, type CruiseModel } from "./catalogue.ts";
+import { explainCompression, parseCompressHeader } from "./compression.ts";
 import { endpoint, promptForKey, settled, storedKey } from "./credentials.ts";
-import { showCredentialProblem } from "./dialog.ts";
+import { COMPRESSION_SETTING, showCompressionSetting, showCredentialProblem } from "./dialog.ts";
 import { fetchCatalogue, GatewayError, streamCompletion, type ChatRequest } from "./gateway.ts";
 import { estimateTokens, estimateTurnTokens, toChatMessages, type Part, type Turn } from "./messages.ts";
 import { diagnose } from "./pairing.ts";
@@ -47,6 +48,7 @@ export class CruiseChatProvider implements vscode.LanguageModelChatProvider<vsco
   constructor(
     private readonly secrets: vscode.SecretStorage,
     private readonly log: vscode.LogOutputChannel,
+    private readonly statusBar?: vscode.StatusBarItem,
   ) {}
 
   /** The key or the endpoint moved, so the model list is no longer current. */
@@ -122,6 +124,11 @@ export class CruiseChatProvider implements vscode.LanguageModelChatProvider<vsco
     }
 
     const request = requestFor(model, messages, options);
+    // Only send x-cruise-compress when the setting is off. Any other value (even 'on') is a 400.
+    const compressionSetting = vscode.workspace.getConfiguration().get<string>(COMPRESSION_SETTING);
+    const extraHeaders: Record<string, string> =
+      compressionSetting === "off" ? { "x-cruise-compress": "off" } : {};
+
     // Captured, not re-read: a refusal is explained against the gateway that
     // gave it, and the setting may have moved while the request was out.
     const base = endpoint();
@@ -129,7 +136,25 @@ export class CruiseChatProvider implements vscode.LanguageModelChatProvider<vsco
     const cancel = token.onCancellationRequested(() => abort.abort());
 
     try {
-      const body = await streamCompletion(base, key, request, abort.signal);
+      const { body, headers } = await streamCompletion(base, key, request, abort.signal, extraHeaders);
+      const compressHeader = parseCompressHeader(headers.get("x-cruise-compress"));
+      if (compressHeader !== null) {
+        const explanation = explainCompression(compressHeader);
+        if (explanation.logMessage !== null) {
+          this.log.info(`${model.id}: ${explanation.logMessage}`);
+        }
+        if (this.statusBar !== undefined) {
+          if (explanation.statusBarText !== null) {
+            this.statusBar.text = explanation.statusBarText;
+            this.statusBar.tooltip = explanation.statusBarTooltip ?? undefined;
+            this.statusBar.show();
+          } else {
+            // No saving to report — but an opt-out stays visible, including
+            // through the gateway's `off reason=header` echo of it.
+            showCompressionSetting(this.statusBar);
+          }
+        }
+      }
       for await (const event of readCompletionStream(body)) {
         if (token.isCancellationRequested) break;
         if (event.kind === "text") {

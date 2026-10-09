@@ -65,20 +65,28 @@ describe("fetchCatalogue", () => {
 });
 
 describe("streamCompletion", () => {
-  it("posts to the completions path and returns the body unread", async () => {
+  it("posts to the completions path and returns the body unread and response headers", async () => {
     const body = new ReadableStream<Uint8Array>({ start: (c) => c.close() });
-    const fake = stub(new Response(body, { status: 200 }));
+    const fake = stub(new Response(body, { status: 200, headers: { "x-cruise-compress": "applied v=1 before=100 after=50" } }));
     const request = {
       model: "bb/extraction",
       messages: [],
       stream: true as const,
       stream_options: { include_usage: true as const },
     };
-    const returned = await streamCompletion("https://cruise.bytesbrains.net/v1", "k", request, new AbortController().signal);
-    expect(returned).toBe(body);
+    const returned = await streamCompletion(
+      "https://cruise.bytesbrains.net/v1",
+      "k",
+      request,
+      new AbortController().signal,
+      { "x-cruise-compress": "off" },
+    );
+    expect(returned.body).toBe(body);
+    expect(returned.headers.get("x-cruise-compress")).toBe("applied v=1 before=100 after=50");
     const [url, init] = fake.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("https://cruise.bytesbrains.net/v1/chat/completions");
     expect(init.method).toBe("POST");
+    expect((init.headers as Record<string, string>)["x-cruise-compress"]).toBe("off");
     expect(JSON.parse(String(init.body))).toMatchObject({ model: "bb/extraction", stream: true });
   });
 

@@ -258,6 +258,76 @@ describe("the response that comes back", () => {
     token.cancel();
     await expect(run).resolves.toBeUndefined();
   });
+
+  it("does not send x-cruise-compress header when cruise.compression is auto", async () => {
+    const fake = stub(sse());
+    const { provider: p, secrets } = provider();
+    await secrets.store("cruise.apiKey", "k");
+    await responseOf(p, [userTurn(new vscode.LanguageModelTextPart("hi"))]).run;
+    const init = (fake.mock.calls[0] as [string, RequestInit])[1];
+    const sentHeaders = init.headers as Record<string, string>;
+    expect(sentHeaders["x-cruise-compress"]).toBeUndefined();
+  });
+
+  it("sends x-cruise-compress: off when cruise.compression is off", async () => {
+    const fake = stub(sse());
+    const { provider: p, secrets } = provider();
+    await secrets.store("cruise.apiKey", "k");
+    state.settings.set("cruise.compression", "off");
+    await responseOf(p, [userTurn(new vscode.LanguageModelTextPart("hi"))]).run;
+    const init = (fake.mock.calls[0] as [string, RequestInit])[1];
+    const sentHeaders = init.headers as Record<string, string>;
+    expect(sentHeaders["x-cruise-compress"]).toBe("off");
+  });
+
+  it("logs and displays compression savings in status bar when header is applied", async () => {
+    const text = [...[{ choices: [{ delta: { content: "ok" } }] }].map((payload) => `data: ${JSON.stringify(payload)}\n\n`), "data: [DONE]\n\n"].join("");
+    stub(
+      new Response(text, {
+        status: 200,
+        headers: {
+          "content-type": "text/event-stream",
+          "x-cruise-compress": "applied v=1 before=18200 after=6100",
+        },
+      }),
+    );
+    const statusBar = vscode.window.createStatusBarItem();
+    const secrets = new MemorySecrets();
+    const log = vscode.window.createOutputChannel("test", { log: true });
+    const p = new CruiseChatProvider(secrets, log, statusBar);
+    await secrets.store("cruise.apiKey", "k");
+    await responseOf(p, [userTurn(new vscode.LanguageModelTextPart("hi"))]).run;
+
+    expect(state.logged).toContainEqual({
+      level: "info",
+      message: "bb/extraction: request compression: tool outputs compressed (18.2 KB → 6.1 KB)",
+    });
+    const tracked = state.statusBarItems.find((item) => item.text.includes("compressed"));
+    expect(tracked).toBeDefined();
+    expect(tracked?.visible).toBe(true);
+    expect(statusBar.text).toBe("$(archive) compressed 18.2 KB → 6.1 KB");
+    expect(statusBar.tooltip).toContain("18.2 KB → 6.1 KB");
+  });
+
+  it("keeps the off indicator when the gateway echoes the opt-out", async () => {
+    const text = `data: ${JSON.stringify({ choices: [{ delta: { content: "ok" } }] })}\n\ndata: [DONE]\n\n`;
+    stub(
+      new Response(text, {
+        status: 200,
+        headers: { "content-type": "text/event-stream", "x-cruise-compress": "off reason=header" },
+      }),
+    );
+    state.settings.set("cruise.compression", "off");
+    const statusBar = vscode.window.createStatusBarItem();
+    const secrets = new MemorySecrets();
+    const p = new CruiseChatProvider(secrets, vscode.window.createOutputChannel("test", { log: true }), statusBar);
+    await secrets.store("cruise.apiKey", "k");
+    await responseOf(p, [userTurn(new vscode.LanguageModelTextPart("hi"))]).run;
+
+    const tracked = state.statusBarItems.at(-1)!;
+    expect(tracked.visible).toBe(true);
+    expect(tracked.text).toBe("$(archive) compression: off");
+  });
 });
 
 describe("counting tokens", () => {
